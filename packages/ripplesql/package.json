@@ -17,6 +17,7 @@
     "typescript": "^3.6.4"
   },
   "dependencies": {
+    "node-level": "^0.1.2",
     "node-sql-parser": "^1.6.6"
   }
 }

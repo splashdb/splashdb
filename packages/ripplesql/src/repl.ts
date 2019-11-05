@@ -1,15 +1,11 @@
 import repl from 'repl'
-import { Parser } from 'node-sql-parser'
 import { Context } from 'vm'
-import { Database } from 'node-level'
+import { DatabaseSQL } from './Database'
 import { argv } from 'yargs'
 import path from 'path'
-import { select } from './select'
-import { Result } from './result'
 
-const parser = new Parser()
 const dbpath = typeof argv.dbpath === 'string' ? argv.dbpath : './db'
-const db = new Database(path.resolve(process.cwd(), dbpath))
+const db = new DatabaseSQL(path.resolve(process.cwd(), dbpath))
 
 repl.start({
   prompt: '> ',
@@ -20,16 +16,7 @@ repl.start({
     callback
   ): Promise<void> => {
     try {
-      const ast = parser.astify(cmd)
-      console.log(JSON.stringify(ast, null, 2))
-      let result: Result[] = []
-
-      if (Array.isArray(ast)) {
-      } else {
-        if (ast.type === 'select') {
-          result = await select(db, ast)
-        }
-      }
+      const result = await db.query(cmd)
       if (result.length === 0) {
         callback(null, '0 record listed.')
       } else {

@@ -54,6 +54,7 @@ export async function* tableIterator(
   options.start = `${tableName}/${afterId || ''}`
   for await (const entry of db.iterator(options)) {
     const key = `${entry.key}`
+    if (!key.startsWith(`${tableName}/`)) break
     const id = key.substr(`${tableName}/`.length)
     const doc: Document = {
       [symbolId]: id,

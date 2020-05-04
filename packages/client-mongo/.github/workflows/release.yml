@@ -33,8 +33,8 @@ jobs:
       
       - name: Run npm login & npm publish
         run: |
-          echo '//npm.pkg.github.com/:_authToken=${{secrets.GITHUB_TOKEN}}' > ~/.npmrc
-          npm publish --registry=https://npm.pkg.github.com/youkuohao
+          echo '//npm.pkg.github.com/:_authToken=${{secrets.NPM_TOKEN}}' > ~/.npmrc
+          npm publish
 
       - name: Create Changelogs
         id: changelog

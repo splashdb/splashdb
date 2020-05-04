@@ -15,7 +15,7 @@ async function main(){
   const results = await mongo.find({
     $and: [
       {
-        $count: { $gt: 1 }
+        count: { $gt: 1 }
       },
       {
         $name: {

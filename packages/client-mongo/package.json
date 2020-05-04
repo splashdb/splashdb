@@ -1,0 +1,63 @@
+{
+  "name": "ripplemongo",
+  "version": "0.1.0",
+  "description": "",
+  "main": "build/index.js",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "node-ts-scripts bundle"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heineiuo/ripplemongo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/heineiuo/ripplemongo/issues"
+  },
+  "homepage": "https://github.com/heineiuo/ripplemongo#readme",
+  "devDependencies": {
+    "node-ts-scripts": "^0.9.3"
+  },
+  "platform": "node",
+  "prettier": {
+    "parser": "typescript",
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": false,
+    "singleQuote": true
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es6": true
+    },
+    "extends": [
+      "plugin:@typescript-eslint/recommended",
+      "prettier",
+      "prettier/@typescript-eslint"
+    ],
+    "globals": {
+      "Atomics": "readonly",
+      "SharedArrayBuffer": "readonly"
+    },
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaVersion": 2018,
+      "sourceType": "module"
+    },
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "rules": {}
+  },
+  "dependencies": {
+    "bootbuffer": "^0.2.0",
+    "rippledb": "^0.3.0",
+    "uuid": "^8.0.0"
+  }
+}

@@ -1,0 +1,60 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - run: |
+          git fetch --prune --unshallow
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      
+      - name: Run npm build
+        run: |
+          npm install
+          npm run build
+        env:
+          CI: true
+      
+      - name: Run npm login & npm publish
+        run: |
+          echo '//npm.pkg.github.com/:_authToken=${{secrets.GITHUB_TOKEN}}' > ~/.npmrc
+          npm publish --registry=https://npm.pkg.github.com/youkuohao
+
+      - name: Create Changelogs
+        id: changelog
+        run: |
+          GIT_PREV_TAG=$(git describe --abbrev=0 --tags `git rev-list --tags --skip=1 --max-count=1`)
+          GIT_PREV_COMMIT=$(git rev-list --all --skip=1 --max-count=1)
+          CHANGELOG_TEXT=$(git log --pretty=format:'- %s'  --no-merges $GIT_PREV_TAG..$GIT_PREV_COMMIT)
+          CHANGELOG_TEXT="${CHANGELOG_TEXT//'%'/'%25'}"
+          CHANGELOG_TEXT="${CHANGELOG_TEXT//$'\n'/'%0A'}"
+          CHANGELOG_TEXT="${CHANGELOG_TEXT//$'\r'/'%0D'}"
+          echo "::set-output name=body::$CHANGELOG_TEXT"
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false

@@ -33,7 +33,7 @@ jobs:
       
       - name: Run npm login & npm publish
         run: |
-          echo '//npm.pkg.github.com/:_authToken=${{secrets.NPM_TOKEN}}' > ~/.npmrc
+          echo '//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}' > ~/.npmrc
           npm publish
 
       - name: Create Changelogs

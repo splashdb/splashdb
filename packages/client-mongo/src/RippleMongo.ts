@@ -1,6 +1,6 @@
 import { Database, IteratorOptions } from 'rippledb'
 import { EntryValueType, BootBuffer } from 'bootbuffer'
-import uuidv1 from 'uuid/v1'
+import * as uuid from 'uuid'
 
 export function clean<T extends { [x: string]: unknown }>(obj: T): T {
   const propNames = Object.getOwnPropertyNames(obj)
@@ -128,7 +128,7 @@ export class RippleMongo {
     tableName: string,
     doc: RawDocument
   ): Promise<T> {
-    const id = uuidv1()
+    const id = uuid.v1()
     const key = `${tableName}/${id}`
     const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
     const bb = new BootBuffer()

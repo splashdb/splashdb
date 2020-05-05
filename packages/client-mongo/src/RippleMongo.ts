@@ -25,19 +25,21 @@ export interface Document extends RawDocument {
   [symbolId]: string
 }
 
-type RawOrder = string
-interface ParsedOrder {
-  orderBy: string
-  direction: 'ASC' | 'DESC'
-  skip: number
+interface MongoOrder {
+  [x: string]: 1 | -1
 }
 
 interface MongoOption {
-  defaultFields?: unknown
-  table: string
-  limit?: number
+  $collection: string
+  $query: MongoOperator
+  $limit?: number
   // see ParsedOrder
-  order?: RawOrder
+  $orderby?: MongoOrder
+  $skip?: number
+  //
+  $defaultFields?: {
+    [x: string]: EntryValueType
+  }
 }
 
 interface MongoComparison {
@@ -93,17 +95,6 @@ async function parseRawDocument(docBuf: Buffer): Promise<RawDocument> {
     doc[bbEntry.key] = bbEntry.value
   }
   return doc
-}
-
-function parseOrder(raw: RawOrder): ParsedOrder {
-  const order = {} as ParsedOrder
-  const rawCopy = raw.trimLeft().trimRight()
-  const list = rawCopy.split(' ')
-  if (list.length === 0) throw new Error('BadSyntax')
-  order.orderBy = list[0]
-  order.direction = list[1] === 'ASC' ? 'ASC' : 'DESC'
-  order.skip = parseInt(list[2]) || 0
-  return order
 }
 
 export class RippleMongo {
@@ -317,40 +308,39 @@ export class RippleMongo {
     }
   }
 
-  async find<T extends Document>(
-    operator: MongoOperator,
-    option: MongoOption
-  ): Promise<T[]> {
+  async find<T extends Document>(option: MongoOption): Promise<T[]> {
     const results: T[] = []
-    const { table, limit = 10 } = option
-    for await (const doc of this.tableIterator<T>(table)) {
-      if (option.defaultFields) {
+    const { $collection, $limit = 10 } = option
+    for await (const doc of this.tableIterator<T>($collection)) {
+      if (option.$defaultFields) {
         Object.assign(
           doc,
-          option.defaultFields,
+          option.$defaultFields,
           { ...doc },
           { ID: doc[symbolId] }
         )
       }
-      if (!this.match<T>(operator, doc)) {
+      if (!this.match<T>(option.$query, doc)) {
         continue
       }
       results.push(doc)
-      if (!option.order && results.length >= limit) break
+      if (!option.$orderby && results.length >= $limit) break
     }
 
-    if (!option.order) return results
-
-    const parsedOrder = parseOrder(option.order)
-    const isASC = parsedOrder.direction === 'ASC'
-    const sortReturnLeft = isASC ? -1 : 1
-    const sortReturnRight = isASC ? 1 : -1
-    results.sort((left: T, right: T): 1 | -1 => {
-      const leftFieldValue = left[parsedOrder.orderBy]
-      const rightFieldValue = right[parsedOrder.orderBy]
-      return leftFieldValue < rightFieldValue ? sortReturnLeft : sortReturnRight
-    })
-    results.splice(0, parsedOrder.skip)
-    return results.splice(0, limit)
+    if (option.$orderby) {
+      const orderby = Object.keys(option.$orderby)[0]
+      const isASC = option.$orderby[orderby] === 1
+      const sortReturnLeft = isASC ? -1 : 1
+      const sortReturnRight = isASC ? 1 : -1
+      results.sort((left: T, right: T): 1 | -1 => {
+        const leftFieldValue = left[orderby]
+        const rightFieldValue = right[orderby]
+        return leftFieldValue < rightFieldValue
+          ? sortReturnLeft
+          : sortReturnRight
+      })
+    }
+    results.splice(0, option.$skip)
+    return results.splice(0, $limit)
   }
 }

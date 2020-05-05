@@ -13,17 +13,22 @@ async function main(){
   const mongo = new RippleMongo(db)
 
   const results = await mongo.find({
-    $and: [
-      {
-        count: { $gt: 1 }
-      },
-      {
-        $name: {
-          $in: ["apple", "banana"]
+    $collection: 'fruit',
+    $skip: 10, 
+    $orderby: { count: 1 },
+    $query: {
+      $and: [
+        {
+          count: { $gt: 1 }
+        },
+        {
+          category: {
+            $in: ["apple", "banana"]
+          }
         }
-      }
-    ]
-  }, { table: 'fruit' })
+      ]
+    }
+  }
 }
 
 main()

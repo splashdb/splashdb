@@ -1,11 +1,13 @@
-name: Release CI
-
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
+
+name: Release
 
 jobs:
   build:
+    name: Create Release
     runs-on: ubuntu-latest
 
     strategy:
@@ -13,19 +15,53 @@ jobs:
         node-version: [14.x]
 
     steps:
-      - uses: actions/checkout@v1
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Git Fetch
+        run: |
+          git fetch --prune --unshallow
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: yarn build
+
+      - name: Run npm build
         run: |
           npm install
           npm run build
           npm run build:tsc
         env:
           CI: true
-      - name: npm login & publish
+
+      - name: Create Changelogs
+        id: changelog
+        uses: heineiuo/create-changelogs@master
+
+      - name: Run npm login
         run: |
           echo '//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}' > ~/.npmrc
+
+      - name: Run npm publish
+        if: ${{ steps.changelog.outputs.release_type == 'release' }}
+        run: |
           npm publish
+
+      - name: Run npm publish@next
+        if: ${{ steps.changelog.outputs.release_type == 'prerelease' }}
+        run: |
+          npm publish --tag next
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: ${{ steps.changelog.outputs.changelogs }}
+          draft: false
+          prerelease:
+            ${{ steps.changelog.outputs.release_type == 'prerelease' }}

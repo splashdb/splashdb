@@ -177,9 +177,11 @@ export class SplashdbSampleClient {
     })
 
     const iterator = stream.call(req) as AsyncIterableIterator<Buffer>
+    console.log(1)
     const callbackIterator = IteratorHelper.wrap(iterator, () => {
       req.end()
     })
+    console.log(2)
 
     for await (const chunk of callbackIterator) {
       /* Asynchronously iterate over buffer chunks read from file. */

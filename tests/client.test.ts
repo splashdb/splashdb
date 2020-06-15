@@ -6,23 +6,31 @@ global.TextDecoder = require('util').TextDecoder
 
 jest.setTimeout(60000 * 10)
 
-let unloadNode = (): void => {
+let unloadNode = async (): Promise<void> => {
   return
 }
 
-afterAll(() => {
-  unloadNode()
+beforeAll(async () => {
+  unloadNode = await localNode()
 })
 
-describe('Post Endpoints', () => {
-  it('should create a new post', async (done) => {
-    unloadNode = await localNode()
-    await new Promise((resolve) => setTimeout(resolve, 5000))
+afterAll(async () => {
+  await unloadNode()
+})
+
+describe('Call methods', () => {
+  test('put/get', async (done) => {
     const client = new SplashdbSampleClient()
-    await client.ok()
+    await client.del('key')
     const getresult = await client.get('key')
-    console.log(`[test] result`, getresult, new TextDecoder().decode(getresult))
-    client.destroy()
+    expect(getresult).toEqual(null)
+    await client.put('key', 'value')
+    const getresult2 = await client.get('key')
+    expect(getresult2).toEqual(new TextEncoder().encode('value'))
+    for await (const entry of client.iterator()) {
+      console.log(entry)
+    }
+    await client.destroy()
     done()
   })
 })

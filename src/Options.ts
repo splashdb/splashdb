@@ -4,4 +4,5 @@ export type SplashDBServerOptions = {
   secureCert?: string | Buffer
   adminPassword?: string
   port?: number
+  dbpath?: string
 }

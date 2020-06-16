@@ -21,18 +21,23 @@ afterAll(async () => {
 describe('Call methods', () => {
   test('put/get/del/iterator', async (done) => {
     const client = new SplashdbSampleClient()
-    const getresult = await client.get('key')
-    expect(getresult).toEqual(null)
-    await client.put('key', 'value')
-    const getresult1 = await client.get('key')
-    expect(getresult1).toEqual(new TextEncoder().encode('value'))
-    await client.del('key')
-    const getresult2 = await client.get('key')
-    expect(getresult2).toEqual(null)
-    for await (const entry of client.iterator({ reverse: false })) {
-      // console.log(`[test] `, entry)
+    try {
+      const getresult = client.get('key')
+      expect(getresult).resolves.toEqual(null)
+      await client.put('key', 'value')
+      const getresult1 = await client.get('key')
+      expect(getresult1).toEqual(new TextEncoder().encode('value'))
+      await client.del('key')
+      const getresult2 = await client.get('key')
+      expect(getresult2).toEqual(null)
+      for await (const entry of client.iterator({ reverse: false })) {
+        // console.log(`[test] `, entry)
+      }
+    } catch (e) {
+      throw e
+    } finally {
+      await client.destroy()
+      done()
     }
-    await client.destroy()
-    done()
   })
 })

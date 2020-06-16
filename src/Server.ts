@@ -51,6 +51,7 @@ export class SplashDBServer {
           ':status': 200,
         })
         stream.end('Splashdb')
+        stream.close()
         return
       }
       if (typeof method !== 'string' || typeof dbname !== 'string') {
@@ -58,6 +59,7 @@ export class SplashDBServer {
           ':status': 400,
         })
         stream.end('Bad Request')
+        stream.close()
         return
       }
       if (!(await this.authManager.can(authorization, method, dbname))) {
@@ -65,6 +67,7 @@ export class SplashDBServer {
           ':status': 403,
         })
         stream.end('Forbidden')
+        stream.close()
         return
       }
 

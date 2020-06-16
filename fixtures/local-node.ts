@@ -6,6 +6,7 @@ export default async function localNode(): Promise<() => Promise<void>> {
   const secure =
     !!process.env.SPLASHDB_SECURE_KEY && !!process.env.SPLASHDB_SECURE_CERT
   const options: SplashDBServerOptions = {
+    adminPassword: process.env.SPLASHDB_ADMIN_PASSWORD,
     secure,
   }
   if (secure) {

@@ -12,7 +12,8 @@ type SplashDBIteratorResult = {
 export class SplashdbSampleClient {
   constructor(options?: { db: string }) {
     this.options = { db: 'system', ...options }
-    this.authorization = 'Basic YWRtaW46YWRtaW4='
+    this.authorization =
+      'Basic YWRtaW46MThkMGMwNGU0NjM5YjBhNGNlOGVkYTk1MzcxM2M5NzAxMDcyMWM0YTMxNDA4ZTYzMzJjODM1NmQ4ZWJmZWVmNWE4N2VjNGJlNDIyNDM3NzU='
     const ca = fs.readFileSync(
       path.resolve(process.cwd(), process.env.SPLASHDB_SECURE_CERT)
     )

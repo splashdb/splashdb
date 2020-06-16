@@ -1,21 +1,21 @@
 import fs from 'fs'
-import path from 'path'
 import { SplashDBServer, SplashDBServerOptions } from '../../src'
 
 export default async function localNode(): Promise<() => Promise<void>> {
-  const secure =
-    !!process.env.SPLASHDB_SECURE_KEY && !!process.env.SPLASHDB_SECURE_CERT
   const options: SplashDBServerOptions = {
-    secure,
+    secure: !!process.env.SPLASHDB_SECURE,
+    dbpath: '/data/db',
+    adminPassword: fs.readFileSync(
+      '/run/secrets/splashdb-admin-password',
+      'utf8'
+    ),
+    port: process.env.SPLASHDB_PORT
+      ? parseInt(process.env.SPLASHDB_PORT)
+      : 8443,
   }
-  if (secure) {
-    options.secureKey = fs.readFileSync(
-      path.resolve(process.cwd(), process.env.SPLASHDB_SECURE_KEY)
-    )
-    options.secureCert = fs.readFileSync(
-      path.resolve(process.cwd(), process.env.SPLASHDB_SECURE_CERT)
-    )
-    options.dbpath = path.resolve(process.cwd(), process.env.SPLASHDB_DBPATH)
+  if (options.secure) {
+    options.secureKey = fs.readFileSync('/run/secrets/splashdb-privkey.pem')
+    options.secureCert = fs.readFileSync('/run/secrets/splashdb-cert.pem')
   }
 
   const server = new SplashDBServer(options)

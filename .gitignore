@@ -2,3 +2,7 @@ node_modules
 .cache
 .DS_Store
 .db
+docker/**/*.js
+src/**/*.js
+fixtures/**/*.js
+tests/**/*.js

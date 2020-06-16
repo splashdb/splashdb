@@ -6,3 +6,4 @@ docker/**/*.js
 src/**/*.js
 fixtures/**/*.js
 tests/**/*.js
+build

@@ -17,6 +17,9 @@ export default async function localNode(): Promise<() => Promise<void>> {
     )
     options.dbpath = path.resolve(process.cwd(), process.env.SPLASHDB_DBPATH)
   }
+  try {
+    fs.unlinkSync(options.dbpath)
+  } catch (e) {}
   const server = new SplashDBServer(options)
 
   return async (): Promise<void> => {

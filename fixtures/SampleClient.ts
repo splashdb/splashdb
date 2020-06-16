@@ -2,8 +2,12 @@ import http2 from 'http2'
 import fs from 'fs'
 import path from 'path'
 import { BootBuffer } from 'bootbuffer'
-import { stream } from 'event-iterator'
-import IteratorHelper from '../src/IteratorHelper'
+import varint from 'varint'
+
+type SplashDBIteratorResult = {
+  key: Buffer
+  value: Buffer
+}
 
 export class SplashdbSampleClient {
   constructor(options?: { db: string }) {
@@ -49,7 +53,7 @@ export class SplashdbSampleClient {
       let handled = false
       const cache: Buffer[] = []
 
-      console.time(`[client] ${method} request`)
+      // console.time(`[client] ${method} request`)
       const req = this.session.request({
         // GET / DELETE methods cannot use req.write
         ':method': 'POST',
@@ -64,14 +68,14 @@ export class SplashdbSampleClient {
         if (status !== 200) {
           handled = true
           if (status === 404) {
-            console.timeEnd(`[client] ${method} request`)
+            // console.timeEnd(`[client] ${method} request`)
             return resolve(null)
           }
           reject(new Error(`HTTP_ERROR_${headers[':status']}`))
         }
         if (method === 'put' || method === 'del') {
           handled = true
-          console.log(`[client] ${method} get response`)
+          // console.log(`[client] ${method} get response`)
           console.timeEnd(`[client] ${method} request`)
           resolve()
         }
@@ -101,6 +105,7 @@ export class SplashdbSampleClient {
         }
         handled = true
         resolve(result)
+        req.close()
       })
 
       req.write(requestBuffer)
@@ -152,13 +157,19 @@ export class SplashdbSampleClient {
 
   async *iterator(
     iteratorOption: { start?: string | Buffer; reverse?: boolean } = {}
-  ): AsyncIterableIterator<{
-    key: Uint8Array
-    value: Uint8Array
-  }> {
+  ): AsyncIterableIterator<SplashDBIteratorResult> {
     if (this.session.connecting) {
       await this.ok()
     }
+    type SplashDBIterator = { value: SplashDBIteratorResult; done: boolean }
+    const cache: SplashDBIteratorResult[] = []
+    const queue: {
+      resolve: (ite: SplashDBIterator) => void
+      reject: (reason?: any) => void
+    }[] = []
+    let ended = false
+    // let started = false
+
     const req = this.session.request({
       // GET / DELETE methods cannot use req.write
       ':method': 'POST',
@@ -168,35 +179,114 @@ export class SplashdbSampleClient {
       'x-splashdb-method': 'iterator',
     })
 
-    const payload = this.buildPayload(iteratorOption)
-
-    console.log(`[client] iterator start`)
-    process.nextTick(() => {
-      req.write(payload)
-      console.log('[client] req write')
-    })
-
-    const iterator = stream.call(req) as AsyncIterableIterator<Buffer>
-    console.log(1)
-    const callbackIterator = IteratorHelper.wrap(iterator, () => {
-      req.end()
-    })
-    console.log(2)
-
-    for await (const chunk of callbackIterator) {
-      /* Asynchronously iterate over buffer chunks read from file. */
-      const result = {} as { key: Buffer; value: Buffer }
-      for await (const param of BootBuffer.read(chunk)) {
-        result[param.key] = param.value
+    req.on('response', (headers, flags) => {
+      const status = headers[':status']
+      if (status !== 200) {
+        throw new Error(`HTTP_ERROR_${headers[':status']}`)
       }
-      yield result
+    })
+
+    req.on('data', async (chunk) => {
+      if (ended) return
+      // console.log(chunk)
+      const chunkBuf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+
+      let chunkReadBytes = 0
+      const chunkSize = chunkBuf.length
+      while (true) {
+        if (chunkReadBytes >= chunkSize) break
+        const bbLength = varint.decode(chunkBuf, chunkReadBytes)
+        chunkReadBytes += varint.decode.bytes
+        const bbBuf = chunkBuf.slice(chunkReadBytes, chunkReadBytes + bbLength)
+        const result = {} as SplashDBIteratorResult
+        for await (const entry of BootBuffer.read(bbBuf)) {
+          result[entry.key] = entry.value
+        }
+        if (queue.length > 0) {
+          const promise = queue.shift()
+          // console.log('[client] got data, shift queue, set done: false')
+          promise.resolve({ value: result, done: false })
+        } else {
+          // console.log('[client] got data, add to cache')
+          cache.push(result)
+        }
+        chunkReadBytes += bbLength
+      }
+    })
+
+    req.once('end', () => {
+      ended = true
+      // console.log('[client] req end')
+      if (queue.length > 0) {
+        const promise = queue.shift()
+        // console.log('[client] req end clean queue', queue.length)
+        promise.resolve({ done: true, value: undefined })
+      } else {
+        // console.log(`[client] queue is empty`)
+      }
+      req.close()
+    })
+
+    const payload = this.buildPayload(iteratorOption)
+    req.write(payload)
+
+    const reqReadIterator: AsyncIterable<SplashDBIteratorResult> = {
+      [Symbol.asyncIterator]() {
+        return {
+          return: async (): Promise<IteratorResult<SplashDBIteratorResult>> => {
+            // console.log(`[client] return called`)
+            try {
+              const value = cache.shift()
+              return Promise.resolve({ done: true, value })
+            } catch (e) {
+              return Promise.resolve({ done: true, value: e })
+            } finally {
+              req.end()
+            }
+          },
+          next: (): Promise<IteratorResult<SplashDBIteratorResult>> => {
+            // console.log(`[client] next called`)
+            // if (!started) {
+            //   console.log(`[client] next called not started`)
+            //   started = true
+            //   console.log(`[client] next called at first next()`)
+            //   req.write(payload)
+            //   console.log(`[client] next called add to queue  `)
+            //   return new Promise((resolve, reject) => {
+            //     queue.push({ resolve, reject })
+            //   })
+            // }
+            const result = cache.shift()
+            if (result) {
+              // console.log(`[client] next called resolve result`)
+
+              return Promise.resolve({ value: result, done: false })
+            } else if (ended) {
+              // console.log(`[client] next called return done`)
+              return Promise.resolve({ value: undefined, done: true })
+            } else {
+              // console.log(`[client] next called add to queue`)
+
+              return new Promise((resolve, reject) => {
+                queue.push({ resolve, reject })
+              })
+            }
+          },
+        }
+      },
     }
+
+    yield* reqReadIterator
   }
 
   async destroy(): Promise<void> {
     await new Promise((resolve) => {
+      let resolved = false
       this.session.close(() => {
-        resolve()
+        if (!resolved) {
+          resolved = true
+          resolve()
+        }
       })
     })
   }

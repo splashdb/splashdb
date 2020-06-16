@@ -28,6 +28,10 @@ export default class IteratorHelper {
       return it
     }
 
+    if (Symbol.asyncIterator in iterator) {
+      console.log('wow async iterator', iterator, iterator.return)
+    }
+
     iterator.return = async (): Promise<IteratorResult<T>> => {
       try {
         const value = (await iterator.next()).value
@@ -38,6 +42,8 @@ export default class IteratorHelper {
         return { done: true, value: e }
       }
     }
+    console.log('wow wow')
+
     return iterator
   }
 

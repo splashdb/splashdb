@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { AuthManager } from './AuthManager'
 import { DBManager } from './DBManager'
 import { BootBuffer } from 'bootbuffer'
+import varint from 'varint'
 
 export class SplashDBServer {
   constructor(options?: SplashDBServerOptions) {
@@ -45,26 +46,38 @@ export class SplashDBServer {
       const authorization = headers.authorization
       const method = headers['x-splashdb-method']
       const dbname = headers['x-splashdb-db']
+      if (headers[':method'] === 'GET') {
+        stream.respond({
+          ':status': 200,
+        })
+        stream.end('Splashdb')
+        return
+      }
       if (typeof method !== 'string' || typeof dbname !== 'string') {
-        return stream.respond({
+        stream.respond({
           ':status': 400,
         })
+        stream.end('Bad Request')
+        return
       }
       if (!(await this.authManager.can(authorization, method, dbname))) {
-        return stream.respond({
+        stream.respond({
           ':status': 403,
         })
+        stream.end('Forbidden')
+        return
       }
 
       const db = this.dbManager.getDB(dbname)
 
-      console.log(`[server] ${method}`)
+      // console.log(`[server] ${method}`)
       if (method === 'iterator') {
-        console.log('[server] start iterator')
         let iterator: AsyncIterableIterator<Buffer>
         let end = false
         let started = false
+        // console.log('[server] start iterator')
         stream.on('data', async (chunk) => {
+          // console.log(`[server] iterator on data`)
           if (started) return
           started = true
           const params: { [x: string]: any } = {}
@@ -80,25 +93,36 @@ export class SplashDBServer {
             const next = await iterator.next()
             if (!end && next.done) {
               end = true
+              // console.log('[server] reach end of db.iterator')
               stream.write(Buffer.alloc(0))
               stream.end()
               return
             }
             if (!end && !next.done) {
+              // console.log('[server] push result to cilent')
               const bb = new BootBuffer()
               bb.add('key', next.value.key)
               bb.add('value', next.value.value)
-              stream.write(bb.buffer)
+              // format: <Buffer bbLength(varint) bb(Buffer) >
+              const length = bb.buffer.length
+              const buf = Buffer.concat([
+                Buffer.from(varint.encode(length)),
+                bb.buffer,
+              ])
+              stream.write(buf)
             }
           }
         })
 
         stream.on('end', () => {
+          // console.log('[server] iterator request end')
           if (end) return
           end = true
           stream.write(Buffer.alloc(0))
           stream.end()
         })
+
+        // console.log('[server] end of scope')
       } else {
         const cache: ArrayBuffer[] = []
 
@@ -144,8 +168,9 @@ export class SplashDBServer {
           } else if (method === 'del') {
             await db.del(params.key)
             stream.write(Buffer.alloc(0))
+          } else {
+            // console.log(`[server] unknown method ${method}, payload: `, params)
           }
-          // console.log(`[server] ${method} success`)
 
           stream.end()
         })
@@ -157,13 +182,17 @@ export class SplashDBServer {
     this.server = server
   }
 
-  destroy = async (): Promise<void> => {
+  async destroy(): Promise<void> {
     await this.dbManager.destroy()
     await new Promise((resolve) => {
+      let resolved = false
       this.server.removeAllListeners()
       this.server.close(() => {
-        // console.log('[server] server close')
-        resolve()
+        if (!resolved) {
+          resolved = true
+          this.server.unref()
+          resolve()
+        }
       })
     })
   }

@@ -1,8 +1,8 @@
-import { Database, IteratorOptions } from 'rippledb'
+import { SplashdbClient } from '@splashdb/client'
 import { EntryValueType, BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 
-export function clean<T extends { [x: string]: unknown }>(obj: T): T {
+export function cleanDocument<T extends { [x: string]: unknown }>(obj: T): T {
   const propNames = Object.getOwnPropertyNames(obj)
   for (let i = 0; i < propNames.length; i++) {
     const propName = propNames[i]
@@ -97,20 +97,15 @@ async function parseRawDocument(docBuf: Buffer): Promise<RawDocument> {
   return doc
 }
 
-export class RippleMongo {
-  constructor(db: Database) {
-    this.db = db
-  }
-
-  db: Database
-
+export class SplashdbClientMogno extends SplashdbClient {
   async *tableIterator<T extends Document>(
     tableName: string,
     afterId?: string
   ): AsyncIterableIterator<T> {
-    const options = new IteratorOptions()
-    options.start = `${tableName}/${afterId || ''}`
-    for await (const entry of this.db.iterator(options)) {
+    const options = {
+      start: `${tableName}/${afterId || ''}`,
+    }
+    for await (const entry of this.iterator(options)) {
       const key = `${entry.key}`
       if (!key.startsWith(options.start)) break
       if (key === options.start) continue
@@ -135,7 +130,7 @@ export class RippleMongo {
     for (const name in doc) {
       bb.add(name, doc[name])
     }
-    await this.db.put(key, bb.buffer)
+    await this.put(key, bb.buffer)
     return doc2
   }
 
@@ -144,10 +139,10 @@ export class RippleMongo {
     id: string
   ): Promise<T | void> {
     const key = `${tableName}/${id}`
-    const value = await this.db.get(key)
+    const value = await this.get(key)
     if (!value) return
 
-    const rawdoc = await parseRawDocument(value)
+    const rawdoc = await parseRawDocument(Buffer.from(value))
     const doc: Document = {
       [symbolId]: id,
       [symbolKey]: key,
@@ -162,17 +157,17 @@ export class RippleMongo {
     doc: RawDocument
   ): Promise<T> {
     const key = `${tableName}/${id}`
-    const value = await this.db.get(key)
+    const value = await this.get(key)
     if (!value) throw new Error('Not found')
-    const rawdoc = await parseRawDocument(value)
-    Object.assign(rawdoc, clean(doc))
+    const rawdoc = await parseRawDocument(Buffer.from(value))
+    Object.assign(rawdoc, cleanDocument(doc))
     const bb = new BootBuffer()
     for (const name in rawdoc) {
       if (typeof rawdoc[name] !== 'undefined') {
         bb.add(name, rawdoc[name])
       }
     }
-    await this.db.put(key, bb.buffer)
+    await this.put(key, bb.buffer)
     const newdoc: Document = {
       [symbolId]: id,
       [symbolKey]: key,
@@ -183,7 +178,7 @@ export class RippleMongo {
 
   async remove(tableName: string, id: string): Promise<void> {
     const key = `${tableName}/${id}`
-    await this.db.del(key)
+    await this.del(key)
   }
 
   match<T extends Document>(

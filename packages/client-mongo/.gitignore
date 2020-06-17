@@ -13,6 +13,7 @@ Thumb.db
 .env
 docs/apidoc
 *.log*
+.cache
 config.json
 data
 dist/**/*.min.js

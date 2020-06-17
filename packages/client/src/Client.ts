@@ -1,4 +1,4 @@
-import http2 from 'http2'
+import http2, { ClientHttp2Session } from 'http2'
 import { BootBuffer } from 'bootbuffer'
 import varint from 'varint'
 
@@ -25,7 +25,7 @@ export class SplashdbClient {
   options: Required<SplashdbClientOptions>
   authorization: string
   db: string
-  session: http2.ClientHttp2Session
+  session: ClientHttp2Session
   connectingPromise: Promise<void>
   connected = false
   destroyed = false

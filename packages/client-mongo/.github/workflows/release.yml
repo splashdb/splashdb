@@ -1,9 +1,6 @@
-on:
-  push:
-    tags:
-      - 'v*'
+name: CI
 
-name: Release
+on: [push, pull_request]
 
 jobs:
   build:
@@ -14,47 +11,65 @@ jobs:
         node-version: [14.x]
 
     steps:
-      - uses: actions/checkout@v2
-      
-      - run: |
-          git fetch --prune --unshallow
-      
+      - uses: actions/checkout@v1
+
+      - name: Cache
+        id: cache-node-modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
       
-      - name: Run npm build
+      - name: Login to NPM
         run: |
+          echo '' >> ~/.npmrc
+          echo '//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}' >> ~/.npmrc
+          cat ~/.npmrc
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          npm -v
           npm install
-          npm run build
         env:
           CI: true
-      
-      - name: Run npm login & npm publish
+
+      - name: Build
         run: |
-          echo '//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}' > ~/.npmrc
-          npm publish
+          ./node_modules/.bin/node-ts-scripts bundle src/index.ts --outputDir=build --dts
+        env:
+          CI: true
 
       - name: Create Changelogs
+        if: |
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         id: changelog
+        uses: heineiuo/create-changelogs@master
+
+      - name: Publish to NPM
+        if: |
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
-          GIT_PREV_TAG=$(git describe --abbrev=0 --tags `git rev-list --tags --skip=1 --max-count=1`)
-          GIT_PREV_COMMIT=$(git rev-list --all --skip=1 --max-count=1)
-          CHANGELOG_TEXT=$(git log --pretty=format:'- %s'  --no-merges $GIT_PREV_TAG..$GIT_PREV_COMMIT)
-          CHANGELOG_TEXT="${CHANGELOG_TEXT//'%'/'%25'}"
-          CHANGELOG_TEXT="${CHANGELOG_TEXT//$'\n'/'%0A'}"
-          CHANGELOG_TEXT="${CHANGELOG_TEXT//$'\r'/'%0D'}"
-          echo "::set-output name=body::$CHANGELOG_TEXT"
-      
+          npm publish
+
       - name: Create Release
+        if: |
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         id: create_release
         uses: actions/create-release@latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: ${{ steps.changelog.outputs.body }}
+          release_name: ${{ github.ref }}
+          body: ${{ steps.changelog.outputs.changelogs }}
           draft: false
-          prerelease: false
+          prerelease:
+            ${{ steps.changelog.outputs.release_type == 'prerelease' }}
+

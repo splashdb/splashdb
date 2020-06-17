@@ -1,5 +1,5 @@
 {
-  "name": "ripplemongo",
+  "name": "@splashdb/client-mongo",
   "version": "0.3.3",
   "description": "",
   "main": "build/index.js",
@@ -7,21 +7,21 @@
     "build"
   ],
   "scripts": {
-    "build": "node-ts-scripts bundle"
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/heineiuo/ripplemongo.git"
+    "url": "git+https://github.com/splashdb/client-mongo.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/heineiuo/ripplemongo/issues"
+    "url": "https://github.com/splashdb/client-mongo/issues"
   },
-  "homepage": "https://github.com/heineiuo/ripplemongo#readme",
+  "homepage": "https://github.com/splashdb/client-mongo#readme",
   "devDependencies": {
-    "node-ts-scripts": "^0.9.3"
+    "node-ts-scripts": "^0.12.12"
   },
   "platform": "node",
   "prettier": {
@@ -56,8 +56,8 @@
     "rules": {}
   },
   "dependencies": {
+    "@splashdb/client": "0.0.3",
     "bootbuffer": "^0.2.0",
-    "rippledb": "^0.3.0",
     "uuid": "^8.0.0"
   }
 }

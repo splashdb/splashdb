@@ -119,6 +119,21 @@ export class SplashdbClientMogno extends SplashdbClient {
     }
   }
 
+  async insertById<T extends Document>(
+    tableName: string,
+    id: string,
+    doc: Omit<T, typeof symbolId | typeof symbolKey>
+  ): Promise<T> {
+    const key = `${tableName}/${id}`
+    const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
+    const bb = new BootBuffer()
+    for (const name in doc) {
+      bb.add(name, doc[name])
+    }
+    await this.put(key, bb.buffer)
+    return doc2
+  }
+
   async insert<T extends Document>(
     tableName: string,
     doc: RawDocument

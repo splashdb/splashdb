@@ -1,16 +1,18 @@
-# RippleMongo
+# @splashdb/client-mongo
+
+**Experimental Mongo-style wrapper for Splashdb Client**
+
+Never use it in production.
+
 
 
 ## Usage
 
 ```ts
-import path from 'path'
-import { Database } from 'rippledb'
-import { RippleMongo } from 'ripplemongo'
+import { SplashdbClientMongo } from '@splashdb/client-mongo'
 
 async function main(){
-  const db = new Database(path.resolve(__dirname, './db'))
-  const mongo = new RippleMongo(db)
+  const mongo = new SplashdbClientMongo({ uri: "https://username:passwordlocalhost:8443/system" })
 
   const results = await mongo.find({
     $collection: 'fruit',

@@ -28,6 +28,7 @@ export class SplashdbClient {
   session: http2.ClientHttp2Session
   connectingPromise: Promise<void>
   connected = false
+  destroyed = false
   connectError: Error
 
   createSession(): void {
@@ -64,7 +65,9 @@ export class SplashdbClient {
 
   keepSession(): void {
     this.session.once('close', () => {
-      this.createSession()
+      if (!this.destroyed) {
+        this.createSession()
+      }
     })
   }
 
@@ -299,6 +302,7 @@ export class SplashdbClient {
   }
 
   async destroy(): Promise<void> {
+    this.destroyed = true
     await new Promise((resolve) => {
       let resolved = false
       this.session.close(() => {

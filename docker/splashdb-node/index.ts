@@ -1,7 +1,7 @@
 import fs from 'fs'
 import { SplashDBServer, SplashDBServerOptions } from '../../src'
 
-export default async function localNode(): Promise<() => Promise<void>> {
+export default async function main(): Promise<() => Promise<void>> {
   const options: SplashDBServerOptions = {
     secure: !!process.env.SPLASHDB_SECURE,
     dbpath: '/data/db',
@@ -24,3 +24,5 @@ export default async function localNode(): Promise<() => Promise<void>> {
     await server.destroy()
   }
 }
+
+main()

@@ -24,12 +24,14 @@
   },
   "homepage": "https://github.com/splashdb/client-for-node#readme",
   "devDependencies": {
+    "@types/node": "^14.0.13",
     "@types/varint": "^5.0.0",
+    "node-ts-scripts": "^0.12.12"
+  },
+  "dependencies": {
     "bootbuffer": "^0.2.1",
-    "node-ts-scripts": "^0.12.12",
     "varint": "^5.0.0"
   },
-  "dependencies": {},
   "eslintConfig": {
     "env": {
       "browser": true,

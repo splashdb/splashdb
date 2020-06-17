@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   node:
-    image: docker.pkg.github.com/splashdb/splashdb/node:0.0.2
+    image: docker.pkg.github.com/splashdb/splashdb/node:0.0.3
     environment:
       - SPLASHDB_SECURE=true
     secrets:
@@ -10,7 +10,7 @@ services:
       - splashdb-privkey.pem
       - splashdb-cert.pem
     volumes:
-      - /data/db:/data/db
+      - ../.db:/data/db
     ports:
       - "8443:8443"
     networks:

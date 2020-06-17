@@ -1,3 +1,4 @@
+import { setup } from './setup'
 import { SplashdbSampleClient } from '../fixtures/SampleClient'
 
 async function main(): Promise<void> {
@@ -53,4 +54,5 @@ async function main(): Promise<void> {
   }
 }
 
+setup()
 main()

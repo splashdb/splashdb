@@ -56,7 +56,7 @@
     "rules": {}
   },
   "dependencies": {
-    "@splashdb/client": "0.0.3",
+    "@splashdb/client": "^0.0.4",
     "bootbuffer": "^0.2.0",
     "uuid": "^8.0.0"
   }

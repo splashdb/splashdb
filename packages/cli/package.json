@@ -1,11 +1,12 @@
 {
-  "name": "rippledb-cli",
+  "name": "@splashdb/cli",
   "version": "0.1.0",
   "main": "build/index.js",
   "bin": {
-    "ripple": "./bin/ripple"
+    "splash": "./bin/splash",
+    "splashdb": "./bin/splash"
   },
-  "repository": "https://github.com/heineiuo/rippledb-cli",
+  "repository": "https://github.com/splashdb/cli",
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
   "scripts": {
@@ -47,6 +48,7 @@
     "typescript": "^3.9.3"
   },
   "dependencies": {
+    "@splashdb/client": "0.0.3",
     "rippledb": "^0.3.1",
     "yargs": "^15.3.1"
   }

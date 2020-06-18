@@ -1,4 +1,4 @@
-import { Database } from "rippledb";
+import { SplashdbClient } from "@splashdb/client";
 import { argv } from "yargs";
 import path from "path";
 import fs from "fs";
@@ -10,16 +10,22 @@ async function main(): Promise<void> {
     console.log("commands: dump, restore");
     return;
   }
-  const dbpath = argv._[1];
-  if (!dbpath) {
-    console.log("no dbpath");
+
+  if (!process.env.SPLASHDB_URI) {
+    throw new Error("env SPLASHDB_URI is required.");
   }
 
-  const db = new Database(path.resolve(process.cwd(), dbpath));
-  await db.ok();
+  let ca = undefined;
+  if (process.env.SPLASHDB_SECURE_CERT) {
+    ca = await fs.promises.readFile(process.env.SPLASHDB_SECURE_CERT, "utf8");
+  }
+  const db = new SplashdbClient({
+    uri: process.env.SPLASHDB_URI,
+    ca,
+  });
 
   if (command === "dump") {
-    const dumpPath = argv._[2];
+    const dumpPath = argv._[1];
     if (!dumpPath) {
       console.log("no dump path");
       return;
@@ -38,7 +44,7 @@ async function main(): Promise<void> {
     }
     console.log(`dump success`);
   } else if (command === "restore") {
-    const dumpPath = argv._[2];
+    const dumpPath = argv._[1];
     if (!dumpPath) {
       console.log("no dump path");
       return;
@@ -54,10 +60,14 @@ async function main(): Promise<void> {
           "utf8",
         );
         const json = JSON.parse(content);
-        await db.put(json[0].data, json[1].data);
+        await db.put(Buffer.from(json[0].data), Buffer.from(json[1].data));
         index++;
       } catch (e) {
-        console.log("restore success");
+        if (e.message.startsWith("ENOENT:")) {
+          console.log(`restore success, total: ${index + 1}`);
+        } else {
+          console.log(`Restore failed, current:${index + 1}, err: `, e);
+        }
         break;
       }
     }

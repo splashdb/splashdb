@@ -1,6 +1,6 @@
 {
   "name": "@splashdb/client-mongo",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "",
   "main": "build/index.js",
   "files": [
@@ -56,9 +56,8 @@
     "rules": {}
   },
   "dependencies": {
-    "uuid": "^8.0.0"
-  },
-  "peerDependencies": {
-    "@splashdb/client": "^0.0.5"
+    "uuid": "^8.0.0",
+    "@splashdb/client": "^0.0.5",
+    "bootbuffer": "^0.3.0"
   }
 }

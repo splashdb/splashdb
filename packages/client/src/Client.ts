@@ -213,6 +213,7 @@ export class SplashdbClient {
   async *iterator(
     iteratorOption: { start?: string | Buffer; reverse?: boolean } = {}
   ): AsyncIterableIterator<SplashDBIteratorResult> {
+    // const debug = this.options.debug
     if (this.session.connecting) {
       await this.ok()
     }
@@ -223,7 +224,80 @@ export class SplashdbClient {
       reject: (reason?: any) => void
     }[] = []
     let ended = false
-    // let started = false
+
+    /**
+     * ISSUE #2 https://github.com/splashdb/client/issues/2
+     * ServerHttp2Stream buffer the write data, so client
+     * sometime will not receive a complete BootBuffer
+     * format stream response. Client should cache stream data.
+     */
+    let cachedBuffer = Buffer.alloc(0)
+
+    const readCached = (newBuf: Buffer): void => {
+      if (cachedBuffer.length === 0) {
+        cachedBuffer = newBuf
+      } else {
+        cachedBuffer = Buffer.concat([cachedBuffer, newBuf])
+      }
+
+      const chunkSize = cachedBuffer.length
+      let chunkReadBytes = 0
+      while (true) {
+        if (chunkReadBytes >= chunkSize) break
+        let bbSize = 0
+        try {
+          bbSize = varint.decode(cachedBuffer, chunkReadBytes)
+        } catch (e) {
+          // varint broken because uncomplete response
+          // handle at next time
+          cachedBuffer = cachedBuffer.slice(chunkReadBytes)
+          break
+        }
+        chunkReadBytes += varint.decode.bytes
+        const endPosition = chunkReadBytes + bbSize
+        if (endPosition > chunkSize) {
+          // uncomplete response
+          // handle at next time
+          cachedBuffer = cachedBuffer.slice(
+            chunkReadBytes - varint.decode.bytes
+          )
+          break
+        }
+        const bbBuf = cachedBuffer.slice(chunkReadBytes, endPosition)
+        const result = {} as SplashDBIteratorResult
+        try {
+          for (const entry of BootBuffer.readSync(bbBuf)) {
+            result[entry.key] = entry.value
+          }
+        } catch (e) {
+          if (this.options.debug) {
+            console.log(
+              `[splash client] bbbuffer read failed, so result may be empty`,
+              e.message
+            )
+          }
+          // stop request with error
+          ended = true
+          req.end()
+          if (queue.length > 0) {
+            const promise = queue.shift()
+            promise.reject(e)
+          } else {
+            cache.push(e)
+          }
+          return
+        }
+
+        // read success
+        if (queue.length > 0) {
+          const promise = queue.shift()
+          promise.resolve({ value: result, done: false })
+        } else {
+          cache.push(result)
+        }
+        chunkReadBytes += bbSize
+      }
+    }
 
     const req = this.session.request({
       // GET / DELETE methods cannot use req.write
@@ -243,27 +317,7 @@ export class SplashdbClient {
 
     req.on('data', async (chunk) => {
       if (ended) return
-      const chunkBuf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
-
-      let chunkReadBytes = 0
-      const chunkSize = chunkBuf.length
-      while (true) {
-        if (chunkReadBytes >= chunkSize) break
-        const bbLength = varint.decode(chunkBuf, chunkReadBytes)
-        chunkReadBytes += varint.decode.bytes
-        const bbBuf = chunkBuf.slice(chunkReadBytes, chunkReadBytes + bbLength)
-        const result = {} as SplashDBIteratorResult
-        for await (const entry of BootBuffer.read(bbBuf)) {
-          result[entry.key] = entry.value
-        }
-        if (queue.length > 0) {
-          const promise = queue.shift()
-          promise.resolve({ value: result, done: false })
-        } else {
-          cache.push(result)
-        }
-        chunkReadBytes += bbLength
-      }
+      readCached(Buffer.from(chunk))
     })
 
     req.once('end', () => {
@@ -288,20 +342,20 @@ export class SplashdbClient {
             } catch (e) {
               return Promise.resolve({ done: true, value: e })
             } finally {
-              req.end()
+              if (!ended) {
+                ended = true
+                req.end()
+              }
             }
           },
           next: (): Promise<IteratorResult<SplashDBIteratorResult>> => {
-            // if (!started) {
-            //   started = true
-            //   req.write(payload)
-            //   return new Promise((resolve, reject) => {
-            //     queue.push({ resolve, reject })
-            //   })
-            // }
             const result = cache.shift()
             if (result) {
-              return Promise.resolve({ value: result, done: false })
+              if (result instanceof Error) {
+                return Promise.reject(Error)
+              } else {
+                return Promise.resolve({ value: result, done: false })
+              }
             } else if (ended) {
               return Promise.resolve({ value: undefined, done: true })
             } else {

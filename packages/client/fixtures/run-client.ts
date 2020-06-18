@@ -7,6 +7,7 @@ async function main(): Promise<void> {
   try {
     console.log('')
     const client = new SplashdbClient({
+      debug: true,
       uri: process.env.SPLASHDB_URI,
       ca: fs.readFileSync(
         path.resolve(process.cwd(), process.env.SPLASHDB_SECURE_CERT)
@@ -25,7 +26,7 @@ async function main(): Promise<void> {
     await client.put('key7', 'value')
     // const getresult2 = await client.get('key')
     // console.log(`[run-client] getresult2`, getresult2)
-    // console.time(`[client] each iterator`)
+    console.time(`[client] each iterator`)
     for await (const entry of client.iterator({
       reverse: false,
     })) {
@@ -53,7 +54,7 @@ async function main(): Promise<void> {
     //     break
     //   }
     // }
-    await client.destroy()
+    // await client.destroy()
   } catch (e) {
     console.error('[client] error', e)
   } finally {

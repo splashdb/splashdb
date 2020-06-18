@@ -9,12 +9,13 @@ type SplashDBIteratorResult = {
 
 type SplashdbClientOptions = {
   ca?: string | Buffer
+  debug?: boolean
   uri: string
 }
 
 export class SplashdbClient {
   constructor(options: SplashdbClientOptions) {
-    this.options = { ca: '', ...options }
+    this.options = { debug: false, ca: '', ...options }
     const url = new URL(this.options.uri)
     this.updateAuthorization(url)
     this.db = url.pathname.substr(1)
@@ -45,9 +46,14 @@ export class SplashdbClient {
           delete this.connectingPromise
           delete this.connectError
           this.keepSession()
+          if (this.options.debug) {
+            console.log('[splash client] connected.')
+          }
           resolve()
         }
       }
+
+      // Only listen connection fail
       const errListener = (err: Error): void => {
         if (!handled) {
           this.session.removeListener('connect', connectListener)
@@ -55,7 +61,16 @@ export class SplashdbClient {
           this.connected = false
           delete this.connectingPromise
           this.connectError = err
-          reject(err)
+          setTimeout(() => {
+            if (this.options.debug) {
+              console.log(
+                '[splash client] connect failed, reconnect after 5 seconds.'
+              )
+            }
+            this.createSession()
+          }, 5000)
+          // Do not call reject() here to avoid unhandled rejection error
+          resolve()
         }
       }
       this.session.once('connect', connectListener)
@@ -66,6 +81,9 @@ export class SplashdbClient {
   keepSession(): void {
     this.session.once('close', () => {
       if (!this.destroyed) {
+        if (this.options.debug) {
+          console.log('[splash client] lost connection, reconnect immeditly')
+        }
         this.createSession()
       }
     })
@@ -81,7 +99,7 @@ export class SplashdbClient {
     if (this.connectingPromise) {
       await this.connectingPromise
     }
-    if (!this.connected) {
+    if (this.connectError) {
       throw this.connectError
     }
   }
@@ -115,7 +133,6 @@ export class SplashdbClient {
         }
         if (method === 'put' || method === 'del') {
           handled = true
-          console.timeEnd(`[client] ${method} request`)
           resolve()
         }
       })
@@ -131,7 +148,6 @@ export class SplashdbClient {
 
       req.once('end', () => {
         if (handled) return
-        console.timeEnd(`[client] ${method} request`)
         const totalLength = cache.reduce((total, chunk) => {
           total += chunk.byteLength
           return total

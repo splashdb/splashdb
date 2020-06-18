@@ -29,7 +29,7 @@
     "node-ts-scripts": "^0.12.12"
   },
   "dependencies": {
-    "bootbuffer": "^0.2.1",
+    "bootbuffer": "^0.3.0",
     "varint": "^5.0.0"
   },
   "eslintConfig": {

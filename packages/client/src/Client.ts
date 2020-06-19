@@ -33,6 +33,10 @@ export class SplashdbClient {
   connectError: Error
 
   createSession(): void {
+    if (this.destroyed) {
+      return
+    }
+
     this.session = http2.connect(this.options.uri, {
       ca: this.options.ca || undefined,
     })
@@ -79,13 +83,24 @@ export class SplashdbClient {
   }
 
   keepSession(): void {
-    this.session.once('close', () => {
-      if (!this.destroyed) {
-        if (this.options.debug) {
-          console.log('[splash client] lost connection, reconnect immeditly')
+    const timer = setInterval(() => {
+      this.session.ping((err: Error) => {
+        if (err) {
+          this.session.close()
         }
-        this.createSession()
+      })
+    }, 5000)
+
+    this.session.once('close', () => {
+      clearInterval(timer)
+      if (this.options.debug && !this.destroyed) {
+        console.log('[splash client] lost connection, reconnect immeditly')
       }
+      this.session.removeAllListeners()
+      this.createSession()
+    })
+    this.session.once('error', () => {
+      this.session.close()
     })
   }
 
@@ -144,6 +159,13 @@ export class SplashdbClient {
         } else {
           cache.push(chunk)
         }
+      })
+
+      req.on('error', (e) => {
+        if (e.message.indexOf('ETIMEDOUT') > -1) {
+          this.session.close()
+        }
+        reject(e)
       })
 
       req.once('end', () => {

@@ -64,7 +64,7 @@ jobs:
           # Publish to Docker Hub
           echo "Start pushing to Docker Hub..."
           echo "${{secrets.DOCKER_TOKEN}}" | docker login -u heineiuo --password-stdin
-          docker tag ${IMAGE_TAG} ${GITHUB_REPOSITORY}/node:${IMAGE_VERSION}
+          docker tag ${IMAGE_TAG} splashdb/node:${IMAGE_VERSION}
           docker push ${GITHUB_REPOSITORY}/node:${IMAGE_VERSION}
         env:
           CI: true

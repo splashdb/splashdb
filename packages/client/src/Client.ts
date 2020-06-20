@@ -100,6 +100,13 @@ export class SplashdbClient {
       this.createSession()
     })
     this.session.once('error', () => {
+      if (this.options.debug) {
+        console.log(`[splashdb client] session received an error event`)
+      }
+      this.session.close()
+    })
+    this.session.once('goaway', () => {
+      console.log(`[splashdb client] session received an goaway event`)
       this.session.close()
     })
   }

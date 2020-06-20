@@ -106,7 +106,7 @@ export class SplashdbClient {
       this.session.close()
     })
     this.session.once('goaway', () => {
-      console.log(`[splashdb client] session received an goaway event`)
+      console.log(`[splashdb client] session received a goaway event`)
       this.session.close()
     })
   }

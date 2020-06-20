@@ -1,6 +1,6 @@
 {
   "name": "splashdb",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "",
   "files": [
     "build/index.js",

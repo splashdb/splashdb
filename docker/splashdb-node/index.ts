@@ -2,7 +2,9 @@ import fs from 'fs'
 import { SplashDBServer, SplashDBServerOptions } from '../../src'
 
 export default async function main(): Promise<() => Promise<void>> {
+  const debug = process.env.DEBUG === 'true'
   const options: SplashDBServerOptions = {
+    debug,
     secure: !!process.env.SPLASHDB_SECURE,
     dbpath: '/data/db',
     adminPassword: fs.readFileSync(

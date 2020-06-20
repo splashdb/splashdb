@@ -1,14 +1,15 @@
 import http2 from 'http2'
-import { SplashDBServerOptions } from './Options'
+import varint from 'varint'
 import crypto from 'crypto'
+import { BootBuffer } from 'bootbuffer'
+import { SplashDBServerOptions } from './Options'
 import { AuthManager } from './AuthManager'
 import { DBManager } from './DBManager'
-import { BootBuffer } from 'bootbuffer'
-import varint from 'varint'
 
 export class SplashDBServer {
   constructor(options?: SplashDBServerOptions) {
     this.options = {
+      debug: false,
       secure: false,
       port: 8443,
       secureCert: '',
@@ -39,7 +40,22 @@ export class SplashDBServer {
     server.on('error', (err) => console.error(err))
 
     server.on('session', (session) => {
-      // console.log('[server] new session', session)
+      if (this.options.debug) {
+        console.log(`[server] new session from ${session.origin}`)
+      }
+
+      session.on('error', (e) => {
+        if (this.options.debug) {
+          console.log(`[splashdb] session emit error`, e)
+        }
+        session.close()
+      })
+      session.on('goaway', (e) => {
+        if (this.options.debug) {
+          console.log(`[splashdb] session emit goaway`, e)
+        }
+        session.close()
+      })
     })
 
     server.on('stream', async (stream, headers) => {
@@ -84,7 +100,7 @@ export class SplashDBServer {
           if (started) return
           started = true
           const params: { [x: string]: any } = {}
-          for await (const entry of BootBuffer.read(
+          for (const entry of BootBuffer.readSync(
             typeof chunk === 'string' ? Buffer.from(chunk) : chunk
           )) {
             params[entry.key] = entry.value
@@ -172,7 +188,12 @@ export class SplashDBServer {
             await db.del(params.key)
             stream.write(Buffer.alloc(0))
           } else {
-            // console.log(`[server] unknown method ${method}, payload: `, params)
+            if (this.options.debug) {
+              console.log(
+                `[server] unknown method ${method}, payload: `,
+                params
+              )
+            }
           }
 
           stream.end()
@@ -181,7 +202,9 @@ export class SplashDBServer {
     })
 
     server.listen(this.options.port)
-    // console.log(`[server] listen on port ${this.options.port}`)
+    if (this.options.debug) {
+      console.log(`[server] listen on port ${this.options.port}`)
+    }
     this.server = server
   }
 

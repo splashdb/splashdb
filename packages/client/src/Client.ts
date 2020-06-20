@@ -240,7 +240,7 @@ export class SplashdbClient {
       await this.ok()
     }
     type SplashDBIterator = { value: SplashDBIteratorResult; done: boolean }
-    const cache: SplashDBIteratorResult[] = []
+    const cache: (SplashDBIteratorResult | Error)[] = []
     const queue: {
       resolve: (ite: SplashDBIterator) => void
       reject: (reason?: any) => void
@@ -330,16 +330,39 @@ export class SplashdbClient {
       'x-splashdb-method': 'iterator',
     })
 
-    req.on('response', (headers, flags) => {
+    req.once('response', (headers, flags) => {
       const status = headers[':status']
       if (status !== 200) {
-        throw new Error(`HTTP_ERROR_${headers[':status']}`)
+        const error = new Error(`HTTP_ERROR_${headers[':status']}`)
+
+        ended = true
+        req.end()
+        if (queue.length > 0) {
+          const promise = queue.shift()
+          promise.reject(error)
+        } else {
+          cache.push(error)
+        }
       }
     })
 
     req.on('data', async (chunk) => {
       if (ended) return
       readCached(Buffer.from(chunk))
+    })
+
+    req.once('error', (e) => {
+      if (e.message.indexOf('ETIMEDOUT') > -1) {
+        this.session.close()
+      }
+      ended = true
+      req.end()
+      if (queue.length > 0) {
+        const promise = queue.shift()
+        promise.reject(e)
+      } else {
+        cache.push(e)
+      }
     })
 
     req.once('end', () => {

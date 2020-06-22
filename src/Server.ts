@@ -41,7 +41,7 @@ export class SplashDBServer {
 
     server.on('session', (session) => {
       if (this.options.debug) {
-        console.log(`[server] new session from ${session.origin}`)
+        console.log(`[server] new session`)
       }
 
       session.on('error', (e) => {
@@ -95,7 +95,7 @@ export class SplashDBServer {
         let end = false
         let started = false
         // console.log('[server] start iterator')
-        stream.on('data', async (chunk) => {
+        stream.once('data', async (chunk) => {
           // console.log(`[server] iterator on data`)
           if (started) return
           started = true
@@ -109,26 +109,35 @@ export class SplashDBServer {
           // @ts-ignore
           iterator = db.iterator(params)
           while (true) {
-            const next = await iterator.next()
-            if (!end && next.done) {
-              end = true
-              // console.log('[server] reach end of db.iterator')
-              stream.write(Buffer.alloc(0))
-              stream.end()
-              return
+            if (end) {
+              break
             }
-            if (!end && !next.done) {
-              // console.log('[server] push result to cilent')
-              const bb = new BootBuffer()
-              bb.add('key', next.value.key)
-              bb.add('value', next.value.value)
-              // format: <Buffer bbLength(varint) bb(Buffer) >
-              const length = bb.buffer.length
-              const buf = Buffer.concat([
-                Buffer.from(varint.encode(length)),
-                bb.buffer,
-              ])
-              stream.write(buf)
+            try {
+              const next = await iterator.next()
+              if (!end && next.done) {
+                end = true
+                // console.log('[server] reach end of db.iterator')
+                stream.write(Buffer.alloc(0))
+                stream.end()
+                return
+              }
+              if (!end && !next.done) {
+                // console.log('[server] push result to cilent')
+                const bb = new BootBuffer()
+                bb.add('key', next.value.key)
+                bb.add('value', next.value.value)
+                // format: <Buffer bbLength(varint) bb(Buffer) >
+                const length = bb.buffer.length
+                const buf = Buffer.concat([
+                  Buffer.from(varint.encode(length)),
+                  bb.buffer,
+                ])
+                stream.write(buf)
+              }
+            } catch (e) {
+              if (this.options.debug) {
+                console.log(`[server]`, e)
+              }
             }
           }
         })

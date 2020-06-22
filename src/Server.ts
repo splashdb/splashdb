@@ -124,15 +124,12 @@ export class SplashDBServer {
               if (!end && !next.done) {
                 // console.log('[server] push result to cilent')
                 const bb = new BootBuffer()
-                bb.add('key', next.value.key)
-                bb.add('value', next.value.value)
+                bb.add('key', Buffer.from(next.value.key))
+                bb.add('value', Buffer.from(next.value.value))
+                // debug
                 // format: <Buffer bbLength(varint) bb(Buffer) >
-                const length = bb.buffer.length
-                const buf = Buffer.concat([
-                  Buffer.from(varint.encode(length)),
-                  bb.buffer,
-                ])
-                stream.write(buf)
+                stream.write(Buffer.from(varint.encode(bb.buffer.length)))
+                stream.write(bb.buffer)
               }
             } catch (e) {
               if (this.options.debug) {

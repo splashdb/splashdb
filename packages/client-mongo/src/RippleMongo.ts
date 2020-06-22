@@ -89,15 +89,23 @@ interface MongoOperator extends MongoExpression {
 
 export type ValuesOf<T extends any[]> = T[number]
 
-function parseRawDocument(docBuf: Buffer): RawDocument {
-  const doc: RawDocument = {}
-  for (const bbEntry of BootBuffer.readSync(docBuf)) {
-    doc[bbEntry.key] = bbEntry.value
-  }
-  return doc
-}
-
 export class SplashdbClientMogno extends SplashdbClient {
+  parseRawDocument(docBuf: Buffer): RawDocument {
+    const doc: RawDocument = {}
+    try {
+      for (const bbEntry of BootBuffer.readSync(docBuf)) {
+        doc[bbEntry.key] = bbEntry.value
+      }
+    } catch (e) {
+      if (this.options.debug) {
+        console.warn(
+          '[client-mongo] document parsed with error, maybe broken or not encoded with bootbuffer'
+        )
+      }
+    }
+    return doc
+  }
+
   async *tableIterator<T extends Document>(
     tableName: string,
     afterId?: string
@@ -114,7 +122,7 @@ export class SplashdbClientMogno extends SplashdbClient {
         [symbolId]: id,
         [symbolKey]: key,
       }
-      Object.assign(doc, parseRawDocument(entry.value))
+      Object.assign(doc, this.parseRawDocument(entry.value))
       yield doc as T
     }
   }
@@ -157,7 +165,7 @@ export class SplashdbClientMogno extends SplashdbClient {
     const value = await this.get(key)
     if (!value) return
 
-    const rawdoc = parseRawDocument(Buffer.from(value))
+    const rawdoc = this.parseRawDocument(Buffer.from(value))
     const doc: Document = {
       [symbolId]: id,
       [symbolKey]: key,
@@ -174,7 +182,7 @@ export class SplashdbClientMogno extends SplashdbClient {
     const key = `${tableName}/${id}`
     const value = await this.get(key)
     if (!value) throw new Error('Not found')
-    const rawdoc = parseRawDocument(Buffer.from(value))
+    const rawdoc = this.parseRawDocument(Buffer.from(value))
     Object.assign(rawdoc, cleanDocument(doc))
     const bb = new BootBuffer()
     for (const name in rawdoc) {

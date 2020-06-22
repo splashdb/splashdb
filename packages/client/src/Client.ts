@@ -269,30 +269,35 @@ export class SplashdbClient {
         cachedBuffer = Buffer.concat([cachedBuffer, newBuf])
       }
 
-      const chunkSize = cachedBuffer.length
-      let chunkReadBytes = 0
+      const cachedBufferSize = cachedBuffer.length
+      // read cached buffer from zero every time
+      // and after read, shift the part have read
+      let cachedBufferReadSize = 0
       while (true) {
-        if (chunkReadBytes >= chunkSize) break
+        if (cachedBufferReadSize >= cachedBufferSize) {
+          cachedBuffer = Buffer.alloc(0)
+          break
+        }
         let bbSize = 0
         try {
-          bbSize = varint.decode(cachedBuffer, chunkReadBytes)
+          bbSize = varint.decode(cachedBuffer, cachedBufferReadSize)
         } catch (e) {
           // varint broken because uncomplete response
           // handle at next time
-          cachedBuffer = cachedBuffer.slice(chunkReadBytes)
+          cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
           break
         }
-        chunkReadBytes += varint.decode.bytes
-        const endPosition = chunkReadBytes + bbSize
-        if (endPosition > chunkSize) {
+        const endPosition = cachedBufferReadSize + bbSize + varint.decode.bytes
+        if (endPosition > cachedBufferSize) {
           // uncomplete response
           // handle at next time
-          cachedBuffer = cachedBuffer.slice(
-            chunkReadBytes - varint.decode.bytes
-          )
+          cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
           break
         }
-        const bbBuf = cachedBuffer.slice(chunkReadBytes, endPosition)
+        cachedBufferReadSize += varint.decode.bytes
+        const bbBuf = cachedBuffer.slice(cachedBufferReadSize, endPosition)
+        cachedBufferReadSize += bbSize
+
         const result = {} as SplashDBIteratorResult
         try {
           for (const entry of BootBuffer.readSync(bbBuf)) {
@@ -318,13 +323,13 @@ export class SplashdbClient {
         }
 
         // read success
+        console.log('read success')
         if (queue.length > 0) {
           const promise = queue.shift()
           promise.resolve({ value: result, done: false })
         } else {
           cache.push(result)
         }
-        chunkReadBytes += bbSize
       }
     }
 

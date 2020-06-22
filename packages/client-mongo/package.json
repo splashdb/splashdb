@@ -1,6 +1,6 @@
 {
   "name": "@splashdb/client-mongo",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "",
   "main": "build/index.js",
   "files": [

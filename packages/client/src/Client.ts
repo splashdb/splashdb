@@ -323,7 +323,6 @@ export class SplashdbClient {
         }
 
         // read success
-        console.log('read success')
         if (queue.length > 0) {
           const promise = queue.shift()
           promise.resolve({ value: result, done: false })

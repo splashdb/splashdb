@@ -1,6 +1,6 @@
 {
   "name": "@splashdb/client",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Splashdb client for Node.js",
   "main": "build/index.js",
   "files": [

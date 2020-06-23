@@ -3,6 +3,7 @@ FROM node:14.4.0-alpine
 RUN mkdir -p /usr/local/splashdb
 
 COPY index.js  /usr/local/splashdb/index.js
+COPY entrypoint.js  /usr/local/splashdb/entrypoint.js
 
 WORKDIR /usr/local/splashdb
 

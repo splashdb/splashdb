@@ -7,3 +7,5 @@ src/**/*.js
 fixtures/**/*.js
 tests/**/*.js
 build
+!docker/**/entrypoint.js
+isolate-*-v8.log

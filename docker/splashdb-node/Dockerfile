@@ -8,4 +8,4 @@ WORKDIR /usr/local/splashdb
 
 EXPOSE 8443
 
-CMD [ "node", "index.js" ]
+CMD [ "node", "entrypoint.js" ]

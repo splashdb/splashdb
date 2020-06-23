@@ -21,6 +21,7 @@ export default async function main(): Promise<() => Promise<void>> {
   }
 
   const server = new SplashDBServer(options)
+  console.log('[server] Splashdb starting...')
 
   return async (): Promise<void> => {
     await server.destroy()

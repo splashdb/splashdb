@@ -13,6 +13,12 @@ type SplashdbClientOptions = {
   uri: string
 }
 
+function isBrokenError(e: Error): boolean {
+  if (e.message.indexOf('ETIMEDOUT') > -1) return true
+  if (e.message.indexOf('GOAWAY') > -1) return true
+  return false
+}
+
 export class SplashdbClient {
   constructor(options: SplashdbClientOptions) {
     this.options = { debug: false, ca: '', ...options }
@@ -169,7 +175,7 @@ export class SplashdbClient {
       })
 
       req.on('error', (e) => {
-        if (e.message.indexOf('ETIMEDOUT') > -1) {
+        if (isBrokenError(e)) {
           this.session.close()
         }
         reject(e)
@@ -363,7 +369,7 @@ export class SplashdbClient {
     })
 
     req.once('error', (e) => {
-      if (e.message.indexOf('ETIMEDOUT') > -1) {
+      if (isBrokenError(e)) {
         this.session.close()
       }
       ended = true

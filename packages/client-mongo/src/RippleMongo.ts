@@ -2,6 +2,12 @@ import { SplashdbClient } from '@splashdb/client'
 import { EntryValueType, BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 
+function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {
+  a = a.replace(/^(.{8})-(.{4})-(.{4})/, '$3-$2-$1')
+  b = b.replace(/^(.{8})-(.{4})-(.{4})/, '$3-$2-$1')
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
 export function cleanDocument<T extends { [x: string]: unknown }>(obj: T): T {
   const propNames = Object.getOwnPropertyNames(obj)
   for (let i = 0; i < propNames.length; i++) {
@@ -29,12 +35,16 @@ interface MongoOrder {
   [x: string]: 1 | -1
 }
 
+type MongoOrderById = {
+  [symbolId]: 1 | -1
+}
+
 interface MongoOption {
   $collection: string
   $query: MongoOperator
   $limit?: number
   // see ParsedOrder
-  $orderby?: MongoOrder
+  $orderby?: MongoOrder | MongoOrderById
   $skip?: number
   //
   $defaultFields?: {
@@ -350,12 +360,20 @@ export class SplashdbClientMogno extends SplashdbClient {
       const isASC = option.$orderby[orderby] === 1
       const sortReturnLeft = isASC ? -1 : 1
       const sortReturnRight = isASC ? 1 : -1
-      results.sort((left: T, right: T): 1 | -1 => {
-        const leftFieldValue = left[orderby]
-        const rightFieldValue = right[orderby]
-        return leftFieldValue < rightFieldValue
-          ? sortReturnLeft
-          : sortReturnRight
+
+      results.sort((left: T, right: T): 1 | -1 | 0 => {
+        const leftFieldValue = left[orderby === '_id' ? symbolId : orderby]
+        const rightFieldValue = right[orderby === '_id' ? symbolId : orderby]
+        if (orderby === '_id') {
+          return uuidV1Compare(
+            leftFieldValue as string,
+            rightFieldValue as string
+          )
+        } else {
+          return leftFieldValue < rightFieldValue
+            ? sortReturnLeft
+            : sortReturnRight
+        }
       })
     }
     results.splice(0, option.$skip)

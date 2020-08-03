@@ -1,13 +1,13 @@
 import fs from 'fs'
 import { SplashDBServer, SplashDBServerOptions } from '../../src'
 
-export default async function main(): Promise<() => Promise<void>> {
+export default async function main(): Promise<void> {
   const debug = process.env.DEBUG === 'true'
   const options: SplashDBServerOptions = {
     debug,
-    secure: !!process.env.SPLASHDB_SECURE,
+    secure: process.env.SPLASHDB_SECURE === 'true',
     dbpath: '/data/db',
-    adminPassword: fs.readFileSync(
+    adminPassword: await fs.promises.readFile(
       '/run/secrets/splashdb-admin-password',
       'utf8'
     ),
@@ -16,16 +16,16 @@ export default async function main(): Promise<() => Promise<void>> {
       : 8443,
   }
   if (options.secure) {
-    options.secureKey = fs.readFileSync('/run/secrets/splashdb-privkey.pem')
-    options.secureCert = fs.readFileSync('/run/secrets/splashdb-cert.pem')
+    options.secureKey = await fs.promises.readFile(
+      '/run/secrets/splashdb-privkey.pem'
+    )
+    options.secureCert = await fs.promises.readFile(
+      '/run/secrets/splashdb-cert.pem'
+    )
   }
 
-  const server = new SplashDBServer(options)
   console.log('[server] Splashdb starting...')
-
-  return async (): Promise<void> => {
-    await server.destroy()
-  }
+  new SplashDBServer(options)
 }
 
 main()

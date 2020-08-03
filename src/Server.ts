@@ -64,9 +64,7 @@ export class SplashDBServer {
     })
 
     server.listen(this.options.port)
-    if (this.options.debug) {
-      console.log(`[server] listen on port ${this.options.port}`)
-    }
+    console.log(`[server] listen on port ${this.options.port}`)
 
     for await (const { stream, headers, flags } of new Http2ServerIterator(
       server

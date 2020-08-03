@@ -148,6 +148,7 @@ export class SplashDBServer {
           }
           break
       }
+      stream.end()
       stream.close()
     }
   }
@@ -155,37 +156,47 @@ export class SplashDBServer {
   async parseTotalParams(
     stream: http2.ServerHttp2Stream
   ): Promise<{ [x: string]: string }> {
-    const cache: ArrayBuffer[] = []
-    for await (const { chunk } of new Http2StreamIterator(stream).iterator()) {
-      if (typeof chunk === 'string') {
-        cache.push(new TextEncoder().encode(chunk))
-      } else {
-        cache.push(chunk)
+    try {
+      const cache: ArrayBuffer[] = []
+      for await (const { chunk } of new Http2StreamIterator(
+        stream
+      ).iterator()) {
+        if (typeof chunk === 'string') {
+          cache.push(new TextEncoder().encode(chunk))
+        } else {
+          cache.push(chunk)
+        }
       }
-    }
-    const totalLength = cache.reduce((total, chunk) => {
-      total += chunk.byteLength
-      return total
-    }, 0)
-    const reqdata = new Uint8Array(totalLength)
-    let prevChunkSize = 0
-    for (const chunk of cache) {
-      reqdata.set(new Uint8Array(chunk), prevChunkSize)
-      prevChunkSize = chunk.byteLength
-    }
+      const totalLength = cache.reduce((total, chunk) => {
+        total += chunk.byteLength
+        return total
+      }, 0)
+      const reqdata = new Uint8Array(totalLength)
+      let prevChunkSize = 0
+      for (const chunk of cache) {
+        reqdata.set(new Uint8Array(chunk), prevChunkSize)
+        prevChunkSize = chunk.byteLength
+      }
 
-    const params: { [x: string]: any } = {}
-    for await (const entry of BootBuffer.read(Buffer.from(reqdata))) {
-      params[entry.key] = entry.value
+      const params: { [x: string]: any } = {}
+      for await (const entry of BootBuffer.read(Buffer.from(reqdata))) {
+        params[entry.key] = entry.value
+      }
+      return params
+    } catch (e) {
+      console.log('parse total params fail: ', e.message)
     }
-    return params
   }
 
   async handleIterator(
     db: Database,
     stream: http2.ServerHttp2Stream
   ): Promise<void> {
+    let iteratorCreated = false
     for await (const { chunk } of new Http2StreamIterator(stream).iterator()) {
+      if (iteratorCreated) {
+        break
+      }
       const params: { [x: string]: any } = {}
       for (const entry of BootBuffer.readSync(
         typeof chunk === 'string' ? Buffer.from(chunk) : chunk
@@ -194,6 +205,7 @@ export class SplashDBServer {
       }
 
       const iterator = db.iterator(params as IteratorOptions)
+      iteratorCreated = true
       for await (const result of iterator) {
         const bb = new BootBuffer()
         bb.add('key', Buffer.from(result.key))
@@ -203,11 +215,11 @@ export class SplashDBServer {
         stream.write(Buffer.from(varint.encode(bb.buffer.length)))
         stream.write(bb.buffer)
       }
+      break
     }
 
-    stream.write(Buffer.alloc(0))
+    // stream.write(Buffer.alloc(0))
     stream.end()
-    stream.close()
   }
 
   async destroy(): Promise<void> {

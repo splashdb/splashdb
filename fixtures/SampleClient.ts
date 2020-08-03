@@ -9,9 +9,15 @@ type SplashDBIteratorResult = {
   value: Buffer
 }
 
+function isBrokenError(e: Error): boolean {
+  if (e.message.indexOf('ETIMEDOUT') > -1) return true
+  if (e.message.indexOf('GOAWAY') > -1) return true
+  return false
+}
+
 export class SplashdbSampleClient {
-  constructor(options?: { db: string }) {
-    this.options = { db: 'system', ...options }
+  constructor(options?: { db: string; debug: boolean }) {
+    this.options = { db: 'system', debug: true, ...options }
     this.authorization =
       'Basic YWRtaW46MThkMGMwNGU0NjM5YjBhNGNlOGVkYTk1MzcxM2M5NzAxMDcyMWM0YTMxNDA4ZTYzMzJjODM1NmQ4ZWJmZWVmNWE4N2VjNGJlNDIyNDM3NzU='
     const ca = fs.readFileSync(
@@ -33,7 +39,7 @@ export class SplashdbSampleClient {
     })
   }
 
-  options: { db: string }
+  options: { db: string; debug: boolean }
   authorization: string
   session: http2.ClientHttp2Session
   connectingPromise: Promise<void>
@@ -55,7 +61,7 @@ export class SplashdbSampleClient {
       const cache: Buffer[] = []
 
       // console.time(`[client] ${method} request`)
-      const req = this.session.request({
+      const stream = this.session.request({
         // GET / DELETE methods cannot use req.write
         ':method': 'POST',
         authorization: this.authorization,
@@ -64,7 +70,7 @@ export class SplashdbSampleClient {
         'x-splashdb-method': method,
       })
 
-      req.on('response', (headers, flags) => {
+      stream.on('response', (headers, flags) => {
         const status = headers[':status']
         if (status !== 200) {
           handled = true
@@ -77,12 +83,13 @@ export class SplashdbSampleClient {
         if (method === 'put' || method === 'del') {
           handled = true
           // console.log(`[client] ${method} get response`)
-          console.timeEnd(`[client] ${method} request`)
+          // console.timeEnd(`[client] ${method} request`)
           resolve()
         }
       })
 
-      req.on('data', (chunk) => {
+      stream.on('data', (chunk) => {
+        console.log(chunk)
         if (handled) return
         if (typeof chunk === 'string') {
           cache.push(Buffer.from(chunk))
@@ -91,9 +98,10 @@ export class SplashdbSampleClient {
         }
       })
 
-      req.once('end', () => {
+      stream.once('end', () => {
+        console.log('request stream end')
         if (handled) return
-        console.timeEnd(`[client] ${method} request`)
+        // console.timeEnd(`[client] ${method} request`)
         const totalLength = cache.reduce((total, chunk) => {
           total += chunk.byteLength
           return total
@@ -106,11 +114,11 @@ export class SplashdbSampleClient {
         }
         handled = true
         resolve(result)
-        req.close()
+        stream.close()
       })
 
-      req.write(requestBuffer)
-      req.end()
+      stream.write(requestBuffer)
+      stream.end()
     })
   }
 
@@ -159,17 +167,95 @@ export class SplashdbSampleClient {
   async *iterator(
     iteratorOption: { start?: string | Buffer; reverse?: boolean } = {}
   ): AsyncIterableIterator<SplashDBIteratorResult> {
+    // const debug = this.options.debug
     if (this.session.connecting) {
       await this.ok()
     }
     type SplashDBIterator = { value: SplashDBIteratorResult; done: boolean }
-    const cache: SplashDBIteratorResult[] = []
+    const cache: (SplashDBIteratorResult | Error)[] = []
     const queue: {
       resolve: (ite: SplashDBIterator) => void
       reject: (reason?: any) => void
     }[] = []
     let ended = false
-    // let started = false
+
+    /**
+     * ISSUE #2 https://github.com/splashdb/client/issues/2
+     * ServerHttp2Stream buffer the write data, so client
+     * sometime will not receive a complete BootBuffer
+     * format stream response. Client should cache stream data.
+     */
+    let cachedBuffer = Buffer.alloc(0)
+
+    const readCached = (newBuf: Buffer): void => {
+      if (cachedBuffer.length === 0) {
+        cachedBuffer = newBuf
+      } else {
+        cachedBuffer = Buffer.concat([cachedBuffer, newBuf])
+      }
+
+      const cachedBufferSize = cachedBuffer.length
+      // read cached buffer from zero every time
+      // and after read, shift the part have read
+      let cachedBufferReadSize = 0
+      while (true) {
+        if (cachedBufferReadSize >= cachedBufferSize) {
+          cachedBuffer = Buffer.alloc(0)
+          break
+        }
+        let bbSize = 0
+        try {
+          bbSize = varint.decode(cachedBuffer, cachedBufferReadSize)
+        } catch (e) {
+          // varint broken because uncomplete response
+          // handle at next time
+          cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
+          break
+        }
+        const endPosition = cachedBufferReadSize + bbSize + varint.decode.bytes
+        if (endPosition > cachedBufferSize) {
+          // uncomplete response
+          // handle at next time
+          cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
+          break
+        }
+        cachedBufferReadSize += varint.decode.bytes
+        const bbBuf = cachedBuffer.slice(cachedBufferReadSize, endPosition)
+        cachedBufferReadSize += bbSize
+
+        const result = {} as SplashDBIteratorResult
+        try {
+          for (const entry of BootBuffer.readSync(bbBuf)) {
+            result[entry.key] = entry.value
+          }
+        } catch (e) {
+          if (this.options.debug) {
+            console.log(
+              `[splash client] bbbuffer read failed, so result may be empty`,
+              e.message
+            )
+          }
+          // stop request with error
+          ended = true
+          req.end()
+          if (queue.length > 0) {
+            const promise = queue.shift()
+            promise.reject(e)
+          } else {
+            cache.push(e)
+          }
+          return
+        }
+
+        // read success
+        if (queue.length > 0) {
+          const promise = queue.shift()
+          promise.resolve({ value: result, done: false })
+        } else {
+          cache.push(result)
+        }
+      }
+    }
 
     const req = this.session.request({
       // GET / DELETE methods cannot use req.write
@@ -180,50 +266,46 @@ export class SplashdbSampleClient {
       'x-splashdb-method': 'iterator',
     })
 
-    req.on('response', (headers, flags) => {
+    req.once('response', (headers, flags) => {
       const status = headers[':status']
       if (status !== 200) {
-        throw new Error(`HTTP_ERROR_${headers[':status']}`)
+        const error = new Error(`HTTP_ERROR_${headers[':status']}`)
+
+        ended = true
+        req.end()
+        if (queue.length > 0) {
+          const promise = queue.shift()
+          promise.reject(error)
+        } else {
+          cache.push(error)
+        }
       }
     })
 
     req.on('data', async (chunk) => {
       if (ended) return
-      // console.log(chunk)
-      const chunkBuf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+      readCached(Buffer.from(chunk))
+    })
 
-      let chunkReadBytes = 0
-      const chunkSize = chunkBuf.length
-      while (true) {
-        if (chunkReadBytes >= chunkSize) break
-        const bbLength = varint.decode(chunkBuf, chunkReadBytes)
-        chunkReadBytes += varint.decode.bytes
-        const bbBuf = chunkBuf.slice(chunkReadBytes, chunkReadBytes + bbLength)
-        const result = {} as SplashDBIteratorResult
-        for await (const entry of BootBuffer.read(bbBuf)) {
-          result[entry.key] = entry.value
-        }
-        if (queue.length > 0) {
-          const promise = queue.shift()
-          // console.log('[client] got data, shift queue, set done: false')
-          promise.resolve({ value: result, done: false })
-        } else {
-          // console.log('[client] got data, add to cache')
-          cache.push(result)
-        }
-        chunkReadBytes += bbLength
+    req.once('error', (e) => {
+      if (isBrokenError(e)) {
+        this.session.close()
+      }
+      ended = true
+      req.end()
+      if (queue.length > 0) {
+        const promise = queue.shift()
+        promise.reject(e)
+      } else {
+        cache.push(e)
       }
     })
 
     req.once('end', () => {
       ended = true
-      // console.log('[client] req end')
       if (queue.length > 0) {
         const promise = queue.shift()
-        // console.log('[client] req end clean queue', queue.length)
         promise.resolve({ done: true, value: undefined })
-      } else {
-        // console.log(`[client] queue is empty`)
       }
       req.close()
     })
@@ -235,39 +317,29 @@ export class SplashdbSampleClient {
       [Symbol.asyncIterator]() {
         return {
           return: async (): Promise<IteratorResult<SplashDBIteratorResult>> => {
-            // console.log(`[client] return called`)
             try {
               const value = cache.shift()
               return Promise.resolve({ done: true, value })
             } catch (e) {
               return Promise.resolve({ done: true, value: e })
             } finally {
-              req.end()
+              if (!ended) {
+                ended = true
+                req.end()
+              }
             }
           },
           next: (): Promise<IteratorResult<SplashDBIteratorResult>> => {
-            // console.log(`[client] next called`)
-            // if (!started) {
-            //   console.log(`[client] next called not started`)
-            //   started = true
-            //   console.log(`[client] next called at first next()`)
-            //   req.write(payload)
-            //   console.log(`[client] next called add to queue  `)
-            //   return new Promise((resolve, reject) => {
-            //     queue.push({ resolve, reject })
-            //   })
-            // }
             const result = cache.shift()
             if (result) {
-              // console.log(`[client] next called resolve result`)
-
-              return Promise.resolve({ value: result, done: false })
+              if (result instanceof Error) {
+                return Promise.reject(Error)
+              } else {
+                return Promise.resolve({ value: result, done: false })
+              }
             } else if (ended) {
-              // console.log(`[client] next called return done`)
               return Promise.resolve({ value: undefined, done: true })
             } else {
-              // console.log(`[client] next called add to queue`)
-
               return new Promise((resolve, reject) => {
                 queue.push({ resolve, reject })
               })
@@ -281,6 +353,8 @@ export class SplashdbSampleClient {
   }
 
   async destroy(): Promise<void> {
+    console.log('closing...')
+
     await new Promise((resolve) => {
       let resolved = false
       this.session.close(() => {

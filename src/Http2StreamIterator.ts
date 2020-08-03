@@ -32,6 +32,10 @@ export class Http2StreamIterator {
     this.ended = true
     this.stream.off('data', this.onData)
     this.stream.off('end', this.onEnd)
+    if (this.queue.length > 0) {
+      const q = this.queue.shift()
+      q.resolve({ value: undefined, done: true })
+    }
   }
 
   onData(chunk: string | Buffer): void {

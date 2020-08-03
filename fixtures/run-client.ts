@@ -2,56 +2,42 @@ import { setup } from './setup'
 import { SplashdbSampleClient } from '../fixtures/SampleClient'
 
 async function main(): Promise<void> {
-  let client
+  console.log('main')
+  let client: SplashdbSampleClient
   try {
     client = new SplashdbSampleClient()
   } catch (e) {
-    console.log(`init error`)
+    console.log(`client init error`, e)
   }
+  console.log('client created')
 
   try {
-    // await client.del('key')
-    // const getresult = await client.get('key')
-    // console.log(`[run-client] getresult`, getresult)
+    const result = await client.get('key')
+    console.log(`result of get:`, new TextDecoder().decode(result) || '<void>')
     await client.put('key', 'value')
-    await client.put('key1', 'value')
-    await client.put('key2', 'value')
-    await client.put('key3', 'value')
-    await client.put('key4', 'value')
-    await client.put('key5', 'value')
-    await client.put('key6', 'value')
-    await client.put('key7', 'value')
-    // const getresult2 = await client.get('key')
-    console.log(`[run-client] put done`)
-    // console.time(`[client] each iterator`)
+    await client.put('key1', 'value1')
+    await client.put('key2', 'value2')
+    await client.put('key3', 'value3')
+    await client.put('key4', 'value4')
+    await client.put('key5', 'value5')
+    await client.put('key6', 'value6')
+    await client.put('key7', 'value7')
+    console.log(`put done`)
+    await client.get('key')
+    console.log(`result of get:`, new TextDecoder().decode(result) || '<void>')
+
     for await (const entry of client.iterator({
       reverse: false,
     })) {
       console.log(
-        `[client] iteraotr: `,
-        new TextDecoder().decode(entry.key),
-        new TextDecoder().decode(entry.value)
+        'result:',
+        new TextDecoder().decode(entry.key) || '<void>',
+        new TextDecoder().decode(entry.value) || '<void>'
       )
-      console.timeEnd(`[client] each iterator`)
-      console.time(`[client] each iterator`)
-
-      // console.log(
-      //   `[run-client] got entry: key=${new TextDecoder().decode(
-      //     entry.key
-      //   )} value=${new TextDecoder().decode(entry.value)} `
-      // )
     }
-    console.timeEnd(`[client] each iterator`)
 
-    // const iterator = client.iterator({ reverse: false })
-    // while (true) {
-    //   const result = await iterator.next()
-    //   console.log(result)
-    //   if (result.done) {
-    //     break
-    //   }
-    // }
     await client.destroy()
+    console.log('END\n')
   } catch (e) {
     console.error('[client] error', e)
   }

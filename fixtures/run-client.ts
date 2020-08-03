@@ -2,9 +2,14 @@ import { setup } from './setup'
 import { SplashdbSampleClient } from '../fixtures/SampleClient'
 
 async function main(): Promise<void> {
+  let client
   try {
-    console.log('')
-    const client = new SplashdbSampleClient()
+    client = new SplashdbSampleClient()
+  } catch (e) {
+    console.log(`init error`)
+  }
+
+  try {
     // await client.del('key')
     // const getresult = await client.get('key')
     // console.log(`[run-client] getresult`, getresult)
@@ -17,7 +22,7 @@ async function main(): Promise<void> {
     await client.put('key6', 'value')
     await client.put('key7', 'value')
     // const getresult2 = await client.get('key')
-    // console.log(`[run-client] getresult2`, getresult2)
+    console.log(`[run-client] put done`)
     // console.time(`[client] each iterator`)
     for await (const entry of client.iterator({
       reverse: false,
@@ -49,8 +54,6 @@ async function main(): Promise<void> {
     await client.destroy()
   } catch (e) {
     console.error('[client] error', e)
-  } finally {
-    console.log('------------------------------')
   }
 }
 

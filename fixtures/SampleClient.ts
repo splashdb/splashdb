@@ -23,11 +23,11 @@ export class SplashdbSampleClient {
 
     this.connectingPromise = new Promise((resolve, reject) => {
       this.session.once('connect', () => {
+        console.log('connected')
         resolve()
       })
 
       this.session.once('error', (err) => {
-        console.error('SplashdbSampleClientGotError: ', err)
         reject(err)
       })
     })

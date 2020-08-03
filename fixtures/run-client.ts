@@ -13,7 +13,10 @@ async function main(): Promise<void> {
 
   try {
     const result = await client.get('key')
-    console.log(`result of get:`, new TextDecoder().decode(result) || '<void>')
+    console.log(
+      `result of get:`,
+      result ? new TextDecoder().decode(result) : '<void>'
+    )
     await client.put('key', 'value')
     await client.put('key1', 'value1')
     await client.put('key2', 'value2')

@@ -110,7 +110,7 @@ export class SplashdbSampleClient {
         let prevChunkSize = 0
         for (const chunk of cache) {
           result.set(chunk, prevChunkSize)
-          prevChunkSize = chunk.byteLength
+          prevChunkSize += chunk.byteLength
         }
         handled = true
         resolve(result)

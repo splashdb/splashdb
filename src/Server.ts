@@ -173,7 +173,7 @@ export class SplashDBServer {
       let prevChunkSize = 0
       for (const chunk of cache) {
         reqdata.set(new Uint8Array(chunk), prevChunkSize)
-        prevChunkSize = chunk.byteLength
+        prevChunkSize += chunk.byteLength
       }
 
       const params: { [x: string]: any } = {}

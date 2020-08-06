@@ -47,6 +47,45 @@ jobs:
         env:
           CI: true
 
+      - name: Docker Login
+        if: |
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "${{secrets.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u ${GITHUB_ACTOR} --password-stdin
+          echo "${{secrets.DOCKER_TOKEN}}" | docker login -u heineiuo --password-stdin
+
+      - name: Build Docker(splashdb/mongo) / Publish to registry(GITHUB + Docker Hub)
+        if: |
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          export IMAGE_VERSION=$(node -p "require('./package.json').version")
+          export IMAGE_TAG=docker.pkg.github.com/${GITHUB_REPOSITORY}/mongo:${IMAGE_VERSION}
+          echo "::set-env name=IMAGE_TAG::${IMAGE_TAG}"
+          cd docker/splashdb-mongo
+          docker build -t ${IMAGE_TAG} .
+          docker images
+          docker push ${IMAGE_TAG}
+          docker tag ${IMAGE_TAG} splashdb/mongo:${IMAGE_VERSION}
+          docker push splashdb/mongo:${IMAGE_VERSION}
+        env:
+          CI: true
+
+      - name: Build Docker(splashdb/pd) / Publish to registry(GITHUB + Docker Hub)
+        if: |
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          export IMAGE_VERSION=$(pd -p "require('./package.json').version")
+          export IMAGE_TAG=docker.pkg.github.com/${GITHUB_REPOSITORY}/pd:${IMAGE_VERSION}
+          echo "::set-env name=IMAGE_TAG::${IMAGE_TAG}"
+          cd docker/splashdb-pd
+          docker build -t ${IMAGE_TAG} .
+          docker images
+          docker push ${IMAGE_TAG}
+          docker tag ${IMAGE_TAG} splashdb/pd:${IMAGE_VERSION}
+          docker push splashdb/pd:${IMAGE_VERSION}
+        env:
+          CI: true
+
       - name: Build Docker(splashdb/node) / Publish to registry(GITHUB + Docker Hub)
         if: |
           github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
@@ -57,13 +96,7 @@ jobs:
           cd docker/splashdb-node
           docker build -t ${IMAGE_TAG} .
           docker images
-          # Publish to Github Registry
-          echo "Start pushing to GitHub docker registry..."
-          echo "${{secrets.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u ${GITHUB_ACTOR} --password-stdin
           docker push ${IMAGE_TAG}
-          # Publish to Docker Hub
-          echo "Start pushing to Docker Hub..."
-          echo "${{secrets.DOCKER_TOKEN}}" | docker login -u heineiuo --password-stdin
           docker tag ${IMAGE_TAG} splashdb/node:${IMAGE_VERSION}
           docker push splashdb/node:${IMAGE_VERSION}
         env:

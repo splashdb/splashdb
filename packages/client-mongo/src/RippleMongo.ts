@@ -1,6 +1,9 @@
 import { SplashdbClient } from '@splashdb/client'
-import { EntryValueType, BootBuffer } from 'bootbuffer'
+import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
+import BSON from 'bson'
+
+type EntryValueType = any
 
 function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {
   a = a.replace(/^(.{8})-(.{4})-(.{4})/, '$3-$2-$1')
@@ -100,19 +103,34 @@ interface MongoOperator extends MongoExpression {
 export type ValuesOf<T extends any[]> = T[number]
 
 export class SplashdbClientMogno extends SplashdbClient {
-  parseRawDocument(docBuf: Buffer): RawDocument {
-    const doc: RawDocument = {}
+  parseRawDocument(entry: { key: any; value: Buffer }): RawDocument {
+    let doc: RawDocument = {}
+    let error = null
     try {
-      for (const bbEntry of BootBuffer.readSync(docBuf)) {
-        doc[bbEntry.key] = bbEntry.value
-      }
+      doc = BSON.deserialize(entry.value)
     } catch (e) {
-      if (this.options.debug) {
-        console.warn(
-          '[client-mongo] document parsed with error, maybe broken or not encoded with bootbuffer'
+      error = e
+    }
+    if (error) {
+      if (this.options.debug)
+        console.log(
+          `[client-mongo] Deserialize with BSON failed, fallback to BootBuffer`
         )
+      try {
+        for (const bbEntry of BootBuffer.readSync(entry.value)) {
+          doc[bbEntry.key] = bbEntry.value
+        }
+        error = null
+      } catch (e) {
+        error = e
+        if (this.options.debug) {
+          console.warn(
+            `[client-mongo] document(key=${entry.key}) parsed with error, maybe broken or not encoded with bootbuffer`
+          )
+        }
       }
     }
+
     return doc
   }
 
@@ -132,7 +150,7 @@ export class SplashdbClientMogno extends SplashdbClient {
         [symbolId]: id,
         [symbolKey]: key,
       }
-      Object.assign(doc, this.parseRawDocument(entry.value))
+      Object.assign(doc, this.parseRawDocument(entry))
       yield doc as T
     }
   }
@@ -144,11 +162,7 @@ export class SplashdbClientMogno extends SplashdbClient {
   ): Promise<T> {
     const key = `${tableName}/${id}`
     const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
-    const bb = new BootBuffer()
-    for (const name in doc) {
-      bb.add(name, doc[name])
-    }
-    await this.put(key, bb.buffer)
+    await this.put(key, BSON.serialize(doc))
     return doc2
   }
 
@@ -159,11 +173,8 @@ export class SplashdbClientMogno extends SplashdbClient {
     const id = uuidv1()
     const key = `${tableName}/${id}`
     const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
-    const bb = new BootBuffer()
-    for (const name in doc) {
-      bb.add(name, doc[name])
-    }
-    await this.put(key, bb.buffer)
+    await this.put(key, BSON.serialize(doc))
+
     return doc2
   }
 
@@ -175,7 +186,7 @@ export class SplashdbClientMogno extends SplashdbClient {
     const value = await this.get(key)
     if (!value) return
 
-    const rawdoc = this.parseRawDocument(Buffer.from(value))
+    const rawdoc = this.parseRawDocument({ key, value: Buffer.from(value) })
     const doc: Document = {
       [symbolId]: id,
       [symbolKey]: key,
@@ -192,15 +203,10 @@ export class SplashdbClientMogno extends SplashdbClient {
     const key = `${tableName}/${id}`
     const value = await this.get(key)
     if (!value) throw new Error('Not found')
-    const rawdoc = this.parseRawDocument(Buffer.from(value))
+    const rawdoc = this.parseRawDocument({ key, value: Buffer.from(value) })
     Object.assign(rawdoc, cleanDocument(doc))
-    const bb = new BootBuffer()
-    for (const name in rawdoc) {
-      if (typeof rawdoc[name] !== 'undefined') {
-        bb.add(name, rawdoc[name])
-      }
-    }
-    await this.put(key, bb.buffer)
+    await this.put(key, BSON.serialize(rawdoc))
+
     const newdoc: Document = {
       [symbolId]: id,
       [symbolKey]: key,
@@ -258,7 +264,7 @@ export class SplashdbClientMogno extends SplashdbClient {
       if (typeof operator.$ne === 'object') {
         return JSON.stringify(fieldValue) !== JSON.stringify(operator.$ne)
       }
-      return fieldValue !== operator.$eq
+      return fieldValue !== operator.$ne
     } else if ('$gt' in operator) {
       return fieldValue > operator.$gt
     } else if ('$gte' in operator) {

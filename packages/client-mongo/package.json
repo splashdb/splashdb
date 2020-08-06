@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/splashdb/client-mongo#readme",
   "devDependencies": {
+    "@types/bson": "^4.0.2",
+    "bson": "^4.0.4",
     "node-ts-scripts": "^0.12.12"
   },
   "platform": "node",

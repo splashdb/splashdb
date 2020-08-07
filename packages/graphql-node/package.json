@@ -2,14 +2,14 @@
 	"name": "@splashdb/graphql-node",
 	"version": "0.4.0",
 	"description": "",
-  "main": "build/index.js",
-  "files": [
-    "build/index.js"
+	"main": "build/index.js",
+	"files": [
+		"build/index.js"
 	],
 	"scripts": {
-    "start": "node-ts-scripts run src/index.ts --platform=node",
-    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
-  },
+		"start": "node-ts-scripts run src/index.ts --platform=node",
+		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/splashdb/splashdb.git"

@@ -8,5 +8,8 @@
 	"license": "ISC",
 	"devDependencies": {
 		"node-ts-scripts": "^0.12.13"
+	},
+	"dependencies": {
+		"@splashdb/shared": "^0.1.0"
 	}
 }

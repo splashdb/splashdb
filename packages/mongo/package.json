@@ -54,6 +54,7 @@
 		"rules": {}
 	},
 	"dependencies": {
+		"@splashdb/shared": "^0.1.0",
 		"bootbuffer": "^0.3.0",
 		"bson": "^4.0.4",
 		"uuid": "^8.0.0"

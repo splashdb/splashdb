@@ -5,7 +5,7 @@ import { BootBuffer } from 'bootbuffer'
 import { SplashDBServerOptions } from './Options'
 import { AuthManager } from './AuthManager'
 import { DBManager } from './DBManager'
-import { Http2ServerIterator, Http2StreamIterator } from '../shared'
+import { Http2ServerIterator, Http2StreamIterator } from '@splashdb/shared'
 import { Database } from 'rippledb'
 
 export class SplashDBServer {

@@ -25,6 +25,6 @@
 		"node-ts-scripts": "^0.12.13"
 	},
 	"dependencies": {
-		"@splashdb/mongo": "^0.1.0"
+		"@splashdb/graphql": "^0.1.0"
 	}
 }

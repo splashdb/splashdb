@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  storage:
+    image: splashdb/storage-node:0.0.3
+    environment:
+      - SPLASHDB_SECURE=true
+    secrets:
+      - splashdb-admin-password
+      - splashdb-privkey.pem
+      - splashdb-cert.pem
+    volumes:
+      - ../.db:/data/db
+    ports:
+      - "8443:8443"
+    networks:
+      - splashdb
+
+secrets:
+   splashdb-admin-password:
+     file: ../fixtures/localhost-admin-password.txt
+   splashdb-privkey.pem:
+     file: ../fixtures/localhost-privkey.pem
+   splashdb-cert.pem:
+     file: ../fixtures/localhost-cert.pem
+
+networks:
+  splashdb:

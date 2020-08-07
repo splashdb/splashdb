@@ -1,5 +1,5 @@
 {
-  "name": "@splashdb/shared",
+  "name": "@splashdb/storage",
   "version": "0.5.1",
   "description": "",
   "main": "build/index.js",
@@ -8,17 +8,15 @@
     "build/index.d.ts"
   ],
   "scripts": {
+    "local-client": "node-ts-scripts run fixtures/run-client.ts --platform=node",
+    "local-server": "node-ts-scripts run fixtures/run-local-node.ts --platform=node",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
     "test": "jest --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
-    "node-ts-scripts": "^0.12.13"
-  },
   "dependencies": {
-    "bootbuffer": "^0.3.0",
-    "varint": "^5.0.0"
+    "@splashdb/shared": "^0.5.1"
   }
 }

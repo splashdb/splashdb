@@ -1,7 +1,7 @@
 {
-	"name": "@splashdb/client",
+	"name": "@splashdb/mongo",
 	"version": "0.5.1",
-	"description": "Splashdb client for Node.js",
+	"description": "",
 	"main": "build/index.js",
 	"files": [
 		"build/index.js",
@@ -13,24 +13,23 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/splashdb/splash.git"
+		"url": "git+https://github.com/splashdb/splashdb.git"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/splashdb/splash/issues"
+		"url": "https://github.com/splashdb/client-mongo/issues"
 	},
-	"homepage": "https://github.com/splashdb/splash#readme",
+	"homepage": "https://github.com/splashdb/splashdb#readme",
 	"devDependencies": {
-		"@splashdb/shared": "^0.1.0",
-		"@types/node": "^14.0.13",
-		"@types/varint": "^5.0.0",
-		"node-ts-scripts": "^0.12.13"
+		"@types/bson": "^4.0.2",
+		"node-ts-scripts": "^0.12.12"
 	},
 	"dependencies": {
 		"@splashdb/shared": "^0.5.1",
 		"bootbuffer": "^0.3.0",
-		"varint": "^5.0.0"
+		"bson": "^4.0.4",
+		"uuid": "^8.0.0"
 	}
 }

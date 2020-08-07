@@ -1,0 +1,31 @@
+{
+	"name": "@splashdb/storage-node",
+	"version": "0.5.1",
+	"description": "",
+	"main": "build/index.js",
+	"files": [
+		"build/index.js"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/splashdb/splashdb.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/splashdb/splashdb/issues"
+	},
+	"scripts": {
+		"start": "node-ts-scripts run src/index.ts --platform=node",
+		"publish-docker": "sh publish-docker.sh",
+		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
+	},
+	"homepage": "https://github.com/splashdb/splashdb#readme",
+	"devDependencies": {
+		"node-ts-scripts": "^0.12.13"
+	},
+	"dependencies": {
+		"@splashdb/storage": "^0.5.1"
+	}
+}

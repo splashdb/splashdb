@@ -1,12 +1,16 @@
 {
-  "name": "@splashdb/node",
+  "name": "@splashdb/storage",
   "version": "0.1.0",
   "description": "",
   "main": "build/index.js",
+  "files": [
+    "build/index.js",
+    "build/index.d.ts"
+  ],
   "scripts": {
     "local-client": "node-ts-scripts run fixtures/run-client.ts --platform=node",
     "local-server": "node-ts-scripts run fixtures/run-local-node.ts --platform=node",
-    "build-splashdb-node": "node-ts-scripts bundle docker/splashdb-node/index.ts --outputDir=docker/splashdb-node",
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
     "test": "jest --detectOpenHandles"
   },
   "keywords": [],

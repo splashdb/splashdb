@@ -1,8 +1,8 @@
 version: "3.8"
 
 services:
-  node:
-    image: docker.pkg.github.com/splashdb/splashdb/node:0.0.3
+  storage:
+    image: splashdb/storage-node:0.0.3
     environment:
       - SPLASHDB_SECURE=true
     secrets:

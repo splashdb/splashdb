@@ -3,11 +3,6 @@
   "version": "0.0.16",
   "private": true,
   "description": "",
-  "files": [
-    "build/index.js",
-    "build/index.d.ts"
-  ],
-  "main": "build/index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/heineiuo/splashdb.git"
@@ -18,51 +13,5 @@
   "bugs": {
     "url": "https://github.com/heineiuo/splashdb/issues"
   },
-  "homepage": "https://github.com/heineiuo/splashdb#readme",
-  "eslintConfig": {
-    "env": {
-      "browser": true,
-      "es6": true
-    },
-    "extends": [
-      "react-app",
-      "plugin:@typescript-eslint/recommended",
-      "prettier",
-      "plugin:prettier/recommended",
-      "prettier/@typescript-eslint"
-    ],
-    "globals": {
-      "Atomics": "readonly",
-      "SharedArrayBuffer": "readonly"
-    },
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "ecmaVersion": 2018,
-      "sourceType": "module"
-    },
-    "plugins": [
-      "@typescript-eslint"
-    ],
-    "rules": {}
-  },
-  "prettier": {
-    "prettierPath": "./node_modules/prettier",
-    "parser": "typescript",
-    "trailingComma": "es5",
-    "tabWidth": 2,
-    "semi": false,
-    "singleQuote": true
-  },
-  "jest": {
-    "testEnvironment": "jest-environment-uint8array",
-    "moduleFileExtensions": [
-      "ts",
-      "js"
-    ],
-    "globalSetup": "./fixtures/jest-setup.ts",
-    "coverageDirectory": "./coverage",
-    "coverageReporters": [
-      "lcov"
-    ]
-  }
+  "homepage": "https://github.com/heineiuo/splashdb#readme"
 }

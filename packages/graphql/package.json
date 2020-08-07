@@ -1,11 +1,19 @@
 {
-	"name": "graphql",
-	"version": "1.0.0",
+	"name": "@splashdb/graphql",
+	"version": "0.1.0",
 	"description": "",
-	"main": "index.js",
+	"main": "build/index.js",
 	"keywords": [],
+	"files": [
+		"build/index.js",
+		"build/index.d.ts"
+	],
 	"author": "",
-	"license": "ISC",
+	"license": "MIT",
+	"scripts": {
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
+    "test": "jest --detectOpenHandles"
+  },
 	"devDependencies": {
 		"node-ts-scripts": "^0.12.13"
 	},

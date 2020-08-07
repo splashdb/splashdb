@@ -1,0 +1,30 @@
+{
+	"name": "@splashdb/pd-node",
+	"version": "0.4.0",
+	"description": "",
+  "main": "build/index.js",
+  "files": [
+    "build/index.js"
+	],
+	"scripts": {
+    "start": "node-ts-scripts run src/index.ts --platform=node",
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
+  },
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/splashdb/splashdb.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/splashdb/splashdb/issues"
+	},
+	"homepage": "https://github.com/splashdb/splashdb#readme",
+	"devDependencies": {
+		"node-ts-scripts": "^0.12.13"
+	},
+	"dependencies": {
+		"@splashdb/pd": "^0.1.0"
+	}
+}

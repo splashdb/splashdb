@@ -1,14 +1,19 @@
 {
-	"name": "@splashdb/client-mongo",
+	"name": "@splashdb/mongo",
 	"version": "0.4.0",
 	"description": "",
-	"main": "build/index.js",
-	"files": [
-		"build"
+  "main": "build/index.js",
+  "files": [
+    "build/index.js",
+    "build/index.d.ts"
 	],
+	"scripts": {
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
+    "test": "jest --detectOpenHandles"
+  },
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/splashdb/client-mongo.git"
+		"url": "git+https://github.com/splashdb/splashdb.git"
 	},
 	"keywords": [],
 	"author": "",
@@ -16,42 +21,10 @@
 	"bugs": {
 		"url": "https://github.com/splashdb/client-mongo/issues"
 	},
-	"homepage": "https://github.com/splashdb/client-mongo#readme",
+	"homepage": "https://github.com/splashdb/splashdb#readme",
 	"devDependencies": {
 		"@types/bson": "^4.0.2",
 		"node-ts-scripts": "^0.12.12"
-	},
-	"platform": "node",
-	"prettier": {
-		"parser": "typescript",
-		"trailingComma": "es5",
-		"tabWidth": 2,
-		"semi": false,
-		"singleQuote": true
-	},
-	"eslintConfig": {
-		"env": {
-			"browser": true,
-			"es6": true
-		},
-		"extends": [
-			"plugin:@typescript-eslint/recommended",
-			"prettier",
-			"prettier/@typescript-eslint"
-		],
-		"globals": {
-			"Atomics": "readonly",
-			"SharedArrayBuffer": "readonly"
-		},
-		"parser": "@typescript-eslint/parser",
-		"parserOptions": {
-			"ecmaVersion": 2018,
-			"sourceType": "module"
-		},
-		"plugins": [
-			"@typescript-eslint"
-		],
-		"rules": {}
 	},
 	"dependencies": {
 		"@splashdb/shared": "^0.1.0",

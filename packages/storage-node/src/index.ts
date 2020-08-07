@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { SplashDBServer, SplashDBServerOptions } from '../../src'
+import { SplashDBServer, SplashDBServerOptions } from '@splashdb/storage'
 
 export default async function main(): Promise<void> {
   const debug = process.env.DEBUG === 'true'

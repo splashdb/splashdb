@@ -4,9 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build",
+    "test": "jest --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "node-ts-scripts": "^0.12.13"
+  }
 }

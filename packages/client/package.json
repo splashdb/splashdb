@@ -1,69 +1,64 @@
 {
-  "name": "@splashdb/client",
-  "version": "0.0.9",
-  "description": "Splashdb client for Node.js",
-  "main": "build/index.js",
-  "files": [
-    "build/index.js",
-    "build/index.d.ts"
-  ],
-  "scripts": {
-    "local-client": "node-ts-scripts run fixtures/run-client.ts --platform=node",
-    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --platform=node --dts",
-    "test": "jest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/splashdb/client-for-node.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/splashdb/client-for-node/issues"
-  },
-  "homepage": "https://github.com/splashdb/client-for-node#readme",
-  "devDependencies": {
-    "@types/node": "^14.0.13",
-    "@types/varint": "^5.0.0",
-    "node-ts-scripts": "^0.12.12"
-  },
-  "dependencies": {
-    "bootbuffer": "^0.3.0",
-    "varint": "^5.0.0"
-  },
-  "eslintConfig": {
-    "env": {
-      "browser": true,
-      "es6": true
-    },
-    "extends": [
-      "react-app",
-      "plugin:@typescript-eslint/recommended",
-      "prettier",
-      "plugin:prettier/recommended",
-      "prettier/@typescript-eslint"
-    ],
-    "globals": {
-      "Atomics": "readonly",
-      "SharedArrayBuffer": "readonly"
-    },
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "ecmaVersion": 2018,
-      "sourceType": "module"
-    },
-    "plugins": [
-      "@typescript-eslint"
-    ],
-    "rules": {}
-  },
-  "prettier": {
-    "prettierPath": "./node_modules/prettier",
-    "parser": "typescript",
-    "trailingComma": "es5",
-    "tabWidth": 2,
-    "semi": false,
-    "singleQuote": true
-  }
+	"name": "@splashdb/client",
+	"version": "0.0.9",
+	"description": "Splashdb client for Node.js",
+	"main": "build/index.js",
+	"files": [
+		"build/index.js",
+		"build/index.d.ts"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/splashdb/client-for-node.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/splashdb/client-for-node/issues"
+	},
+	"homepage": "https://github.com/splashdb/client-for-node#readme",
+	"devDependencies": {
+		"@types/node": "^14.0.13",
+		"@types/varint": "^5.0.0",
+		"node-ts-scripts": "^0.12.12"
+	},
+	"dependencies": {
+		"bootbuffer": "^0.3.0",
+		"varint": "^5.0.0"
+	},
+	"eslintConfig": {
+		"env": {
+			"browser": true,
+			"es6": true
+		},
+		"extends": [
+			"react-app",
+			"plugin:@typescript-eslint/recommended",
+			"prettier",
+			"plugin:prettier/recommended",
+			"prettier/@typescript-eslint"
+		],
+		"globals": {
+			"Atomics": "readonly",
+			"SharedArrayBuffer": "readonly"
+		},
+		"parser": "@typescript-eslint/parser",
+		"parserOptions": {
+			"ecmaVersion": 2018,
+			"sourceType": "module"
+		},
+		"plugins": [
+			"@typescript-eslint"
+		],
+		"rules": {}
+	},
+	"prettier": {
+		"prettierPath": "./node_modules/prettier",
+		"parser": "typescript",
+		"trailingComma": "es5",
+		"tabWidth": 2,
+		"semi": false,
+		"singleQuote": true
+	}
 }

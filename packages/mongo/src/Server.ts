@@ -1,6 +1,6 @@
 import http2 from 'http2'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
-import { SplashdbClient } from '../shared'
+import { SplashdbClient } from '@splashdb/shared'
 
 export class SplashDBMongoServer {
   constructor(options: SplashDBMongoOptions) {

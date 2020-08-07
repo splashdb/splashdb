@@ -1,6 +1,6 @@
 {
 	"name": "@splashdb/client",
-	"version": "0.0.9",
+	"version": "0.5.1",
 	"description": "Splashdb client for Node.js",
 	"main": "build/index.js",
 	"files": [
@@ -8,9 +8,9 @@
 		"build/index.d.ts"
 	],
 	"scripts": {
-    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
-    "test": "jest --detectOpenHandles"
-  },
+		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
+		"test": "jest --detectOpenHandles"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/splashdb/splash.git"
@@ -29,7 +29,7 @@
 		"node-ts-scripts": "^0.12.13"
 	},
 	"dependencies": {
-		"@splashdb/shared": "^0.1.0",
+		"@splashdb/shared": "^0.5.1",
 		"bootbuffer": "^0.3.0",
 		"varint": "^5.0.0"
 	}

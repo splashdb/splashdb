@@ -1,6 +1,6 @@
 {
 	"name": "@splashdb/graphql",
-	"version": "0.1.0",
+	"version": "0.5.1",
 	"description": "",
 	"main": "build/index.js",
 	"keywords": [],
@@ -11,13 +11,13 @@
 	"author": "",
 	"license": "MIT",
 	"scripts": {
-    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
-    "test": "jest --detectOpenHandles"
-  },
+		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
+		"test": "jest --detectOpenHandles"
+	},
 	"devDependencies": {
 		"node-ts-scripts": "^0.12.13"
 	},
 	"dependencies": {
-		"@splashdb/shared": "^0.1.0"
+		"@splashdb/shared": "^0.5.1"
 	}
 }

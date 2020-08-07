@@ -1,16 +1,16 @@
 {
 	"name": "@splashdb/mongo",
-	"version": "0.4.0",
+	"version": "0.5.1",
 	"description": "",
-  "main": "build/index.js",
-  "files": [
-    "build/index.js",
-    "build/index.d.ts"
+	"main": "build/index.js",
+	"files": [
+		"build/index.js",
+		"build/index.d.ts"
 	],
 	"scripts": {
-    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
-    "test": "jest --detectOpenHandles"
-  },
+		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
+		"test": "jest --detectOpenHandles"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/splashdb/splashdb.git"
@@ -27,7 +27,7 @@
 		"node-ts-scripts": "^0.12.12"
 	},
 	"dependencies": {
-		"@splashdb/shared": "^0.1.0",
+		"@splashdb/shared": "^0.5.1",
 		"bootbuffer": "^0.3.0",
 		"bson": "^4.0.4",
 		"uuid": "^8.0.0"

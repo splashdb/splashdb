@@ -24,7 +24,7 @@
 	"homepage": "https://github.com/splashdb/splashdb#readme",
 	"devDependencies": {
 		"@types/bson": "^4.0.2",
-		"node-ts-scripts": "^0.12.12"
+		"node-ts-scripts": "^0.12.13"
 	},
 	"dependencies": {
 		"@splashdb/shared": "^0.5.1",

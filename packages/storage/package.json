@@ -18,5 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "@splashdb/shared": "^0.5.1"
+  },
+  "devDependencies": {
+    "node-ts-scripts": "^0.12.13"
   }
 }

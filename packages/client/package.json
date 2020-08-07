@@ -23,7 +23,6 @@
 	},
 	"homepage": "https://github.com/splashdb/splash#readme",
 	"devDependencies": {
-		"@splashdb/shared": "^0.1.0",
 		"@types/node": "^14.0.13",
 		"@types/varint": "^5.0.0",
 		"node-ts-scripts": "^0.12.13"

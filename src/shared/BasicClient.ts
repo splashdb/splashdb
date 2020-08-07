@@ -7,7 +7,7 @@ type SplashDBIteratorResult = {
   value: Buffer
 }
 
-type SplashdbClientOptions = {
+export type SplashdbBasidClientOptions = {
   ca?: string | Buffer
   debug?: boolean
   uri: string
@@ -20,7 +20,7 @@ function isBrokenError(e: Error): boolean {
 }
 
 export class SplashdbClient {
-  constructor(options: SplashdbClientOptions) {
+  constructor(options: SplashdbBasidClientOptions) {
     this.options = { debug: false, ca: '', ...options }
     const url = new URL(this.options.uri)
     this.updateAuthorization(url)
@@ -29,7 +29,7 @@ export class SplashdbClient {
     this.createSession()
   }
 
-  options: Required<SplashdbClientOptions>
+  options: Required<SplashdbBasidClientOptions>
   authorization: string
   db: string
   session: ClientHttp2Session

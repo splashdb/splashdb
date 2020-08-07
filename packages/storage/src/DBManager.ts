@@ -24,7 +24,7 @@ export class DBManager {
 
   async destroy(): Promise<void> {
     for (const entry of this.dbCache) {
-      await entry[1].destroy()
+      await entry[1]?.close()
     }
   }
 }

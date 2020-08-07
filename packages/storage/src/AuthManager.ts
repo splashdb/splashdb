@@ -48,13 +48,14 @@ export class AuthManager {
           }
         }
         const db = this.dbmanager.getDB('system')
+        if (!db) return false
         const record = await db.get(
           `/user/${dbname}/${parsedAuthorization.user}`
         )
 
         if (!record) return false
         const result: { [x: string]: any } = {}
-        for await (const entry of BootBuffer.read(record)) {
+        for await (const entry of BootBuffer.read(Buffer.from(record))) {
           result[entry.key] = entry.value
         }
         if (result.password !== parsedAuthorization.password) return false
@@ -63,6 +64,7 @@ export class AuthManager {
       }
 
       const role = this.roleCache.get(authorization)
+      if (!role) return false
       if (role.role === 'admin') return true
       if (dbname !== role.db) return false
       if (

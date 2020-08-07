@@ -1,5 +1,7 @@
-import { SplashdbBasidClientOptions } from '../shared'
+import { SplashdbBasidClientOptions } from '@splashdb/shared'
 
 export interface SplashDBMongoOptions extends SplashdbBasidClientOptions {
-  ip: string
+  secure: boolean
+  storageNodeId: string
+  port: boolean
 }

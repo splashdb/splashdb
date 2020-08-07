@@ -30,13 +30,13 @@ export class SplashdbClient {
   }
 
   options: Required<SplashdbBasidClientOptions>
-  authorization: string
+  authorization!: string
   db: string
-  session: ClientHttp2Session
-  connectingPromise: Promise<void>
+  session!: ClientHttp2Session
+  connectingPromise!: Promise<void>
   connected = false
   destroyed = false
-  connectError: Error
+  connectError!: Error
 
   createSession(): void {
     if (this.destroyed) {
@@ -90,7 +90,7 @@ export class SplashdbClient {
 
   keepSession(): void {
     const timer = setInterval(() => {
-      this.session.ping((err: Error) => {
+      this.session.ping((err: Error | null): void => {
         if (err) {
           this.session.close()
         }
@@ -155,7 +155,7 @@ export class SplashdbClient {
         if (status !== 200) {
           handled = true
           if (status === 404) {
-            return resolve(null)
+            return resolve()
           }
           reject(new Error(`HTTP_ERROR_${headers[':status']}`))
         }

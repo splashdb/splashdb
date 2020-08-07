@@ -29,7 +29,7 @@ export class SplashDBServer {
   authManager: AuthManager
   dbManager: DBManager
 
-  server: http2.Http2Server | http2.Http2SecureServer
+  server!: http2.Http2Server | http2.Http2SecureServer
 
   start = async (): Promise<void> => {
     const server = this.options.secure

@@ -1,4 +1,4 @@
-import { SplashdbClient } from '../shared'
+import { SplashdbClient } from '@splashdb/shared'
 import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 import BSON from 'bson'

@@ -4,11 +4,15 @@
     "test": "jest src",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
   },
+  "files": [
+    "build/index.js",
+    "build/index.d.ts"
+  ],
   "devDependencies": {
     "node-ts-scripts": "^0.12.13"
   },
   "dependencies": {
-    "bootbuffer": "^0.1.2",
+    "bootbuffer": "^0.3.0",
     "node-sql-parser": "^1.6.6"
   }
 }

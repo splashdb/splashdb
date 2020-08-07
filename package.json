@@ -34,6 +34,7 @@
     "bson": "^4.0.4",
     "dotenv": "^8.2.0",
     "jest-environment-uint8array": "^1.0.0",
+    "lerna": "^3.22.1",
     "node-ts-scripts": "^0.12.12",
     "rippledb": "^1.0.0",
     "supertest": "^4.0.2",

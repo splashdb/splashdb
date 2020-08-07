@@ -1,11 +1,15 @@
 FROM node:14.7.0-alpine
 
-RUN mkdir -p /usr/local/splashdb-pd
+RUN mkdir -p /usr/local/splashdb/pd-node
 
-COPY index.js  /usr/local/splashdb-pd/index.js
+COPY build/index.js  /usr/local/splashdb/pd-node/index.js
+COPY package.json  /usr/local/splashdb/pd-node/package.json
+COPY package-lock.json  /usr/local/splashdb/pd-node/package-lock.json
 
-WORKDIR /usr/local/splashdb-pd
+WORKDIR /usr/local/splashdb/pd-node
+
+RUN npm install --only=production
 
 EXPOSE 8543
 
-CMD [ "node", "index.js" ]
+CMD [ "node", "build/index.js" ]

@@ -16,5 +16,9 @@
   "license": "MIT",
   "devDependencies": {
     "node-ts-scripts": "^0.12.13"
+  },
+  "dependencies": {
+    "bootbuffer": "^0.3.0",
+    "varint": "^5.0.0"
   }
 }

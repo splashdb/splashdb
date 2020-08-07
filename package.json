@@ -7,12 +7,7 @@
     "build/index.d.ts"
   ],
   "main": "build/index.js",
-  "scripts": {
-    "local-client": "node-ts-scripts run fixtures/run-client.ts --platform=node",
-    "local-server": "node-ts-scripts run fixtures/run-local-node.ts --platform=node",
-    "build-splashdb-node": "node-ts-scripts bundle docker/splashdb-node/index.ts --outputDir=docker/splashdb-node",
-    "test": "jest --detectOpenHandles"
-  },
+ 
   "repository": {
     "type": "git",
     "url": "git+https://github.com/heineiuo/splashdb.git"

@@ -16,7 +16,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^14.0.27",
-		"node-ts-scripts": "^0.12.13"
+		"node-ts-scripts": "^0.12.14"
 	},
 	"dependencies": {
 		"@splashdb/shared": "^0.5.1"

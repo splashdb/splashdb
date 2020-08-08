@@ -1,11 +1,11 @@
-import http2 from 'http2'
+import { ServerHttp2Stream } from 'http2'
 
 type Http2StreamIteratorResult = {
   chunk: string | Buffer
 }
 
 export class Http2StreamIterator {
-  constructor(stream: http2.ServerHttp2Stream) {
+  constructor(stream: ServerHttp2Stream) {
     this.stream = stream
     this.cache = []
     this.queue = []
@@ -25,7 +25,7 @@ export class Http2StreamIterator {
     }) => void
     reject: (e: Error) => void
   }[]
-  stream: http2.ServerHttp2Stream
+  stream: ServerHttp2Stream
   iteratorInstance: AsyncIterable<Http2StreamIteratorResult>
 
   onEnd(): void {

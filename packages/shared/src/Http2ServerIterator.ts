@@ -1,13 +1,13 @@
-import http2 from 'http2'
+import { Http2Server, ServerHttp2Stream, IncomingHttpHeaders } from 'http2'
 
 type Http2ServerIteratorResult = {
-  stream: http2.ServerHttp2Stream
-  headers: http2.IncomingHttpHeaders
+  stream: ServerHttp2Stream
+  headers: IncomingHttpHeaders
   flags: number
 }
 
 export class Http2ServerIterator {
-  constructor(server: http2.Http2Server) {
+  constructor(server: Http2Server) {
     this.server = server
     this.cache = []
     this.queue = []
@@ -25,12 +25,12 @@ export class Http2ServerIterator {
     }) => void
     reject: (e: Error) => void
   }[]
-  server: http2.Http2Server
+  server: Http2Server
   iteratorInstance: AsyncIterable<Http2ServerIteratorResult>
 
   onStream(
-    stream: http2.ServerHttp2Stream,
-    headers: http2.IncomingHttpHeaders,
+    stream: ServerHttp2Stream,
+    headers: IncomingHttpHeaders,
     flags: number
   ): void {
     const value = {

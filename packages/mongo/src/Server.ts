@@ -1,4 +1,9 @@
-import http2 from 'http2'
+import {
+  Http2SecureServer,
+  Http2Server,
+  createSecureServer,
+  createServer,
+} from 'http2'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 import { SplashdbClient } from '@splashdb/shared'
 
@@ -11,12 +16,10 @@ export class SplashDBMongoServer {
 
   options: SplashDBMongoOptions
   client: SplashdbClient
-  server!: http2.Http2SecureServer | http2.Http2Server
+  server!: Http2SecureServer | Http2Server
 
   async start(): Promise<void> {
-    this.server = this.options.secure
-      ? http2.createSecureServer()
-      : http2.createSecureServer()
+    this.server = this.options.secure ? createSecureServer() : createServer()
 
     this.server.listen(this.options.port)
   }

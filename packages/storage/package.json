@@ -24,6 +24,6 @@
     "varint": "^5.0.0"
   },
   "devDependencies": {
-    "node-ts-scripts": "^0.12.13"
+    "node-ts-scripts": "^0.12.14"
   }
 }

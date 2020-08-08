@@ -1,4 +1,4 @@
-import http2, { ClientHttp2Session } from 'http2'
+import { connect, ClientHttp2Session } from 'http2'
 import { BootBuffer } from 'bootbuffer'
 import varint from 'varint'
 
@@ -43,7 +43,7 @@ export class SplashdbClient {
       return
     }
 
-    this.session = http2.connect(this.options.uri, {
+    this.session = connect(this.options.uri, {
       ca: this.options.ca || undefined,
     })
     this.connectingPromise = new Promise((resolve, reject) => {

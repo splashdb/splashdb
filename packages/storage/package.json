@@ -8,8 +8,6 @@
     "build/index.d.ts"
   ],
   "scripts": {
-    "local-client": "node-ts-scripts run fixtures/run-client.ts --platform=node",
-    "local-server": "node-ts-scripts run fixtures/run-local-node.ts --platform=node",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
     "test": "jest --detectOpenHandles"
   },

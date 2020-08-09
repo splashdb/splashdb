@@ -19,7 +19,7 @@
 	"scripts": {
 		"start": "node-ts-scripts run src/index.ts --platform=node",
 		"publish-docker": "sh publish-docker.sh",
-		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
+		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --platform=node"
 	},
 	"homepage": "https://github.com/splashdb/splashdb#readme",
 	"devDependencies": {

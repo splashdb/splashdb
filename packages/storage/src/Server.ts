@@ -1,9 +1,7 @@
-import http2 from 'http2'
+import * as http2 from 'http2'
 import varint from 'varint'
-import crypto from 'crypto'
 import { BootBuffer } from 'bootbuffer'
 import { SplashDBServerOptions } from './Options'
-import { AuthManager } from './AuthManager'
 import { DBManager } from './DBManager'
 import { Http2ServerIterator, Http2StreamIterator } from '@splashdb/shared'
 import { Database } from 'rippledb'
@@ -17,16 +15,13 @@ export class SplashDBServer {
       secureCert: '',
       secureKey: '',
       dbpath: '/data/db',
-      adminPassword: crypto.randomBytes(40).toString('hex'),
       ...options,
     }
     this.dbManager = new DBManager(this.options)
-    this.authManager = new AuthManager(this.options, this.dbManager)
     this.start()
   }
 
   options: Required<SplashDBServerOptions>
-  authManager: AuthManager
   dbManager: DBManager
 
   server!: http2.Http2Server | http2.Http2SecureServer
@@ -79,7 +74,6 @@ export class SplashDBServer {
     headers: http2.IncomingHttpHeaders,
     flags: number
   ): Promise<void> {
-    const authorization = headers.authorization
     const method = headers['x-splashdb-method']
     const dbname = headers['x-splashdb-db']
 
@@ -104,46 +98,42 @@ export class SplashDBServer {
       return
     }
 
-    if (!(await this.authManager.can(authorization, method, dbname))) {
-      stream.respond({
-        ':status': 403,
-      })
-      stream.end('Forbidden')
-      stream.close()
-      return
-    }
-
     const db = this.dbManager.getDB(dbname)
 
     if (method === 'iterator') {
       this.handleIterator(db, stream)
     } else {
       const params = await this.parseTotalParams(stream)
-      switch (method) {
-        case 'get':
-          const result = await db.get(params.key)
-          // console.log(`[server] get success`)
-          if (!result) {
-            stream.respond({
-              ':status': 404,
-            })
-          } else {
-            stream.write(result)
-          }
-          break
-        case 'put':
-          await db.put(params.key, params.value)
-          stream.write(Buffer.alloc(0))
-          break
-        case 'del':
-          await db.del(params.key)
-          stream.write(Buffer.alloc(0))
-          break
-        default:
-          if (this.options.debug) {
-            console.log(`[server] unknown method ${method}, payload: `, params)
-          }
-          break
+      if (params) {
+        switch (method) {
+          case 'get':
+            const result = await db.get(params.key)
+            // console.log(`[server] get success`)
+            if (!result) {
+              stream.respond({
+                ':status': 404,
+              })
+            } else {
+              stream.write(result)
+            }
+            break
+          case 'put':
+            await db.put(params.key, params.value)
+            stream.write(Buffer.alloc(0))
+            break
+          case 'del':
+            await db.del(params.key)
+            stream.write(Buffer.alloc(0))
+            break
+          default:
+            if (this.options.debug) {
+              console.log(
+                `[server] unknown method ${method}, payload: `,
+                params
+              )
+            }
+            break
+        }
       }
       stream.end()
       stream.close()
@@ -152,7 +142,7 @@ export class SplashDBServer {
 
   async parseTotalParams(
     stream: http2.ServerHttp2Stream
-  ): Promise<{ [x: string]: string }> {
+  ): Promise<{ [x: string]: string } | void> {
     try {
       const cache: ArrayBuffer[] = []
       for await (const { chunk } of new Http2StreamIterator(

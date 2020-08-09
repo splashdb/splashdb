@@ -1,16 +1,14 @@
-import { connect, ClientHttp2Session } from 'http2'
 import { BootBuffer } from 'bootbuffer'
 import varint from 'varint'
+import { Http2SessionDaemon } from './SessionDaemon'
 
 type SplashDBIteratorResult = {
   key: Buffer
   value: Buffer
 }
 
-export type SplashdbBasidClientOptions = {
-  ca?: string | Buffer
+export type SplashdbBasicClientOptions = {
   debug?: boolean
-  uri: string
 }
 
 function isBrokenError(e: Error): boolean {
@@ -19,134 +17,33 @@ function isBrokenError(e: Error): boolean {
   return false
 }
 
-export class SplashdbClient {
-  constructor(options: SplashdbBasidClientOptions) {
-    this.options = { debug: false, ca: '', ...options }
-    const url = new URL(this.options.uri)
-    this.updateAuthorization(url)
-    this.db = url.pathname.substr(1)
-
-    this.createSession()
+export class SplashdbBasicClient {
+  constructor(
+    sessionDaemon: Http2SessionDaemon,
+    options: SplashdbBasicClientOptions
+  ) {
+    this.sessionDaemon = sessionDaemon
+    this.options = { debug: false, ...options }
   }
 
-  options: Required<SplashdbBasidClientOptions>
-  authorization!: string
-  db: string
-  session!: ClientHttp2Session
-  connectingPromise!: Promise<void>
-  connected = false
-  destroyed = false
-  connectError!: Error
-
-  createSession(): void {
-    if (this.destroyed) {
-      return
-    }
-
-    this.session = connect(this.options.uri, {
-      ca: this.options.ca || undefined,
-    })
-    this.connectingPromise = new Promise((resolve, reject) => {
-      let handled = false
-      const connectListener = (): void => {
-        if (!handled) {
-          this.session.removeListener('error', errListener)
-          handled = true
-          this.connected = true
-          delete this.connectingPromise
-          delete this.connectError
-          this.keepSession()
-          if (this.options.debug) {
-            console.log('[splash client] connected.')
-          }
-          resolve()
-        }
-      }
-
-      // Only listen connection fail
-      const errListener = (err: Error): void => {
-        if (!handled) {
-          this.session.removeListener('connect', connectListener)
-          handled = true
-          this.connected = false
-          delete this.connectingPromise
-          this.connectError = err
-          setTimeout(() => {
-            if (this.options.debug) {
-              console.log(
-                '[splash client] connect failed, reconnect after 5 seconds.'
-              )
-            }
-            this.createSession()
-          }, 5000)
-          // Do not call reject() here to avoid unhandled rejection error
-          resolve()
-        }
-      }
-      this.session.once('connect', connectListener)
-      this.session.once('error', errListener)
-    })
-  }
-
-  keepSession(): void {
-    const timer = setInterval(() => {
-      this.session.ping((err: Error | null): void => {
-        if (err) {
-          this.session.close()
-        }
-      })
-    }, 5000)
-
-    this.session.once('close', () => {
-      clearInterval(timer)
-      if (this.options.debug && !this.destroyed) {
-        console.log('[splash client] lost connection, reconnect immeditly')
-      }
-      this.session.removeAllListeners()
-      this.createSession()
-    })
-    this.session.once('error', () => {
-      if (this.options.debug) {
-        console.log(`[splashdb client] session received an error event`)
-      }
-      this.session.close()
-    })
-    this.session.once('goaway', () => {
-      console.log(`[splashdb client] session received a goaway event`)
-      this.session.close()
-    })
-  }
-
-  updateAuthorization(option: { username: string; password: string }): void {
-    this.authorization = `Basic ${Buffer.from(
-      `${option.username}:${option.password}`
-    ).toString('base64')}`
-  }
-
-  async ok(): Promise<void> {
-    if (this.connectingPromise) {
-      await this.connectingPromise
-    }
-    if (this.connectError) {
-      throw this.connectError
-    }
-  }
+  sessionDaemon: Http2SessionDaemon
+  options: Required<SplashdbBasicClientOptions>
 
   async request(
+    db: string,
     method: 'get' | 'put' | 'del',
     requestBuffer: Buffer
   ): Promise<Uint8Array> {
-    await this.ok()
+    await this.sessionDaemon.ok()
     return await new Promise((resolve, reject) => {
       let handled = false
       const cache: Buffer[] = []
 
-      const req = this.session.request({
+      const req = this.sessionDaemon.session.request({
         // GET / DELETE methods cannot use req.write
         ':method': 'POST',
-        authorization: this.authorization,
         'x-splashdb-version': '1.0',
-        'x-splashdb-db': this.db,
+        'x-splashdb-db': db,
         'x-splashdb-method': method,
       })
 
@@ -176,7 +73,7 @@ export class SplashdbClient {
 
       req.on('error', (e) => {
         if (isBrokenError(e)) {
-          this.session.close()
+          this.sessionDaemon.session.close()
         }
         reject(e)
       })
@@ -214,8 +111,9 @@ export class SplashdbClient {
     return bb.buffer
   }
 
-  async get(key: string | Buffer): Promise<Uint8Array> {
+  async get(db: string, key: string | Buffer): Promise<Uint8Array> {
     const result = await this.request(
+      db,
       'get',
       this.buildPayload({
         key,
@@ -224,8 +122,13 @@ export class SplashdbClient {
     return result
   }
 
-  async put(key: string | Buffer, value: string | Buffer): Promise<void> {
+  async put(
+    db: string,
+    key: string | Buffer,
+    value: string | Buffer
+  ): Promise<void> {
     await this.request(
+      db,
       'put',
       this.buildPayload({
         key,
@@ -235,8 +138,9 @@ export class SplashdbClient {
     return
   }
 
-  async del(key: string | Buffer): Promise<void> {
+  async del(db: string, key: string | Buffer): Promise<void> {
     await this.request(
+      db,
       'del',
       this.buildPayload({
         key,
@@ -246,13 +150,17 @@ export class SplashdbClient {
   }
 
   async *iterator(
+    db: string,
     iteratorOption: { start?: string | Buffer; reverse?: boolean } = {}
   ): AsyncIterableIterator<SplashDBIteratorResult> {
     // const debug = this.options.debug
-    if (this.session.connecting) {
-      await this.ok()
+    if (this.sessionDaemon.session.connecting) {
+      await this.sessionDaemon.ok()
     }
-    type SplashDBIterator = { value: SplashDBIteratorResult; done: boolean }
+    type SplashDBIterator = {
+      value: SplashDBIteratorResult | undefined
+      done: boolean
+    }
     const cache: (SplashDBIteratorResult | Error)[] = []
     const queue: {
       resolve: (ite: SplashDBIterator) => void
@@ -307,7 +215,11 @@ export class SplashdbClient {
         const result = {} as SplashDBIteratorResult
         try {
           for (const entry of BootBuffer.readSync(bbBuf)) {
-            result[entry.key] = entry.value
+            if (entry.key === 'key') {
+              result.key = entry.value as Buffer
+            } else if (entry.key === 'value') {
+              result.value = entry.value as Buffer
+            }
           }
         } catch (e) {
           if (this.options.debug) {
@@ -319,8 +231,8 @@ export class SplashdbClient {
           // stop request with error
           ended = true
           req.end()
-          if (queue.length > 0) {
-            const promise = queue.shift()
+          const promise = queue.shift()
+          if (promise) {
             promise.reject(e)
           } else {
             cache.push(e)
@@ -329,8 +241,8 @@ export class SplashdbClient {
         }
 
         // read success
-        if (queue.length > 0) {
-          const promise = queue.shift()
+        const promise = queue.shift()
+        if (promise) {
           promise.resolve({ value: result, done: false })
         } else {
           cache.push(result)
@@ -338,12 +250,11 @@ export class SplashdbClient {
       }
     }
 
-    const req = this.session.request({
+    const req = this.sessionDaemon.session.request({
       // GET / DELETE methods cannot use req.write
       ':method': 'POST',
-      authorization: this.authorization,
       'x-splashdb-version': '1.0',
-      'x-splashdb-db': this.db,
+      'x-splashdb-db': db,
       'x-splashdb-method': 'iterator',
     })
 
@@ -354,8 +265,8 @@ export class SplashdbClient {
 
         ended = true
         req.end()
-        if (queue.length > 0) {
-          const promise = queue.shift()
+        const promise = queue.shift()
+        if (promise) {
           promise.reject(error)
         } else {
           cache.push(error)
@@ -370,12 +281,12 @@ export class SplashdbClient {
 
     req.once('error', (e) => {
       if (isBrokenError(e)) {
-        this.session.close()
+        this.sessionDaemon.session.close()
       }
       ended = true
       req.end()
-      if (queue.length > 0) {
-        const promise = queue.shift()
+      const promise = queue.shift()
+      if (promise) {
         promise.reject(e)
       } else {
         cache.push(e)
@@ -384,8 +295,8 @@ export class SplashdbClient {
 
     req.once('end', () => {
       ended = true
-      if (queue.length > 0) {
-        const promise = queue.shift()
+      const promise = queue.shift()
+      if (promise) {
         promise.resolve({ done: true, value: undefined })
       }
       req.close()
@@ -431,18 +342,5 @@ export class SplashdbClient {
     }
 
     yield* reqReadIterator
-  }
-
-  async destroy(): Promise<void> {
-    this.destroyed = true
-    await new Promise((resolve) => {
-      let resolved = false
-      this.session.close(() => {
-        if (!resolved) {
-          resolved = true
-          resolve()
-        }
-      })
-    })
   }
 }

@@ -19,7 +19,7 @@ export class DBManager {
       )
       this.dbCache.set(name, db)
     }
-    return this.dbCache.get(name)
+    return this.dbCache.get(name) as Database // make lint happy
   }
 
   async destroy(): Promise<void> {

@@ -1,4 +1,4 @@
-import http2, { ClientHttp2Session } from 'http2'
+import * as http2 from 'http2'
 import { BootBuffer } from 'bootbuffer'
 import varint from 'varint'
 
@@ -32,7 +32,7 @@ export class SplashdbClient {
   options: Required<SplashdbClientOptions>
   authorization: string
   db: string
-  session: ClientHttp2Session
+  session: http2.ClientHttp2Session
   connectingPromise: Promise<void>
   connected = false
   destroyed = false
@@ -261,7 +261,6 @@ export class SplashdbClient {
     let ended = false
 
     /**
-     * ISSUE #2 https://github.com/splashdb/client/issues/2
      * ServerHttp2Stream buffer the write data, so client
      * sometime will not receive a complete BootBuffer
      * format stream response. Client should cache stream data.

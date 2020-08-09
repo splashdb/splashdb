@@ -1,28 +1,43 @@
 version: "3.8"
 
 services:
-  storage:
+  storage-node:
     image: splashdb/storage-node:0.0.3
     environment:
-      - SPLASHDB_SECURE=true
-    secrets:
-      - splashdb-admin-password
-      - splashdb-privkey.pem
-      - splashdb-cert.pem
+      - SPLASHDB_SECURE=false
     volumes:
-      - ../.db:/data/db
+      - .db:/data/db
     ports:
       - "8443:8443"
     networks:
       - splashdb
 
+services:
+  mongo-node:
+    image: splashdb/mongo-node:0.0.3
+    environment:
+      - SPLASHDB_MONGO_SECURE=true
+    secrets:
+      - splashdb-pd-url.txt
+      - splashdb-mongo-password.txt
+      - splashdb-mongo-key.pem
+      - splashdb-mongo-cert.pem
+    volumes:
+      - ../.db:/data/db
+    ports:
+      - "8543:8543"
+    networks:
+      - splashdb
+
 secrets:
-   splashdb-admin-password:
-     file: ../fixtures/localhost-admin-password.txt
-   splashdb-privkey.pem:
-     file: ../fixtures/localhost-privkey.pem
-   splashdb-cert.pem:
-     file: ../fixtures/localhost-cert.pem
+  splashdb-pd-url.txt:
+    file: ./mocks/pd-url.txt
+  splashdb-mongo-password.txt:
+    file: ./mocks/password.txt
+  splashdb-mongo-key.pem:
+    file: ./mocks/key.pem
+  splashdb-mongo-cert.pem:
+    file: ./mocks/cert.pem
 
 networks:
   splashdb:

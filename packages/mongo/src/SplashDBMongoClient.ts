@@ -1,7 +1,10 @@
-import { SplashdbClient } from '@splashdb/shared'
+import { SplashdbBasicClient } from '@splashdb/shared'
 import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 import BSON from 'bson'
+import { PDClient } from './PDClient'
+import { SplashDBMongoOptions } from './SplashDBMongoOptions'
+import { Http2SessionDaemon } from '@splashdb/shared/src/SessionDaemon'
 
 type EntryValueType = any
 
@@ -102,7 +105,19 @@ interface MongoOperator extends MongoExpression {
 
 export type ValuesOf<T extends any[]> = T[number]
 
-export class SplashdbClientMogno extends SplashdbClient {
+export class SplashdbClientMogno {
+  pdClient: PDClient
+  options: SplashDBMongoOptions
+  basicClient: SplashdbBasicClient
+  sessionDaemon: Http2SessionDaemon
+
+  constructor(options: SplashDBMongoOptions) {
+    this.options = options
+    this.pdClient = new PDClient(options)
+    this.sessionDaemon = new Http2SessionDaemon(this.pdClient, this.options)
+    this.basicClient = new SplashdbBasicClient(this.sessionDaemon, options)
+  }
+
   parseRawDocument(entry: { key: any; value: Buffer }): RawDocument {
     let doc: RawDocument = {}
     let error = null
@@ -135,13 +150,14 @@ export class SplashdbClientMogno extends SplashdbClient {
   }
 
   async *tableIterator<T extends Document>(
+    db: string,
     tableName: string,
     afterId?: string
   ): AsyncIterableIterator<T> {
     const options = {
       start: `${tableName}/${afterId || ''}`,
     }
-    for await (const entry of this.iterator(options)) {
+    for await (const entry of this.basicClient.iterator(db, options)) {
       const key = `${entry.key}`
       if (!key.startsWith(options.start)) break
       if (key === options.start) continue
@@ -156,34 +172,37 @@ export class SplashdbClientMogno extends SplashdbClient {
   }
 
   async insertById<T extends Document>(
+    db: string,
     tableName: string,
     id: string,
     doc: Omit<T, typeof symbolId | typeof symbolKey>
   ): Promise<T> {
     const key = `${tableName}/${id}`
     const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
-    await this.put(key, BSON.serialize(doc))
+    await this.basicClient.put(db, key, BSON.serialize(doc))
     return doc2
   }
 
   async insert<T extends Document>(
+    db: string,
     tableName: string,
     doc: RawDocument
   ): Promise<T> {
     const id = uuidv1()
     const key = `${tableName}/${id}`
     const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
-    await this.put(key, BSON.serialize(doc))
+    await this.basicClient.put(db, key, BSON.serialize(doc))
 
     return doc2
   }
 
   async getById<T extends Document>(
+    db: string,
     tableName: string,
     id: string
   ): Promise<T | void> {
     const key = `${tableName}/${id}`
-    const value = await this.get(key)
+    const value = await this.basicClient.get(db, key)
     if (!value) return
 
     const rawdoc = this.parseRawDocument({ key, value: Buffer.from(value) })
@@ -196,16 +215,17 @@ export class SplashdbClientMogno extends SplashdbClient {
   }
 
   async update<T extends Document>(
+    db: string,
     tableName: string,
     id: string,
     doc: RawDocument
   ): Promise<T> {
     const key = `${tableName}/${id}`
-    const value = await this.get(key)
+    const value = await this.basicClient.get(db, key)
     if (!value) throw new Error('Not found')
     const rawdoc = this.parseRawDocument({ key, value: Buffer.from(value) })
     Object.assign(rawdoc, cleanDocument(doc))
-    await this.put(key, BSON.serialize(rawdoc))
+    await this.basicClient.put(db, key, BSON.serialize(rawdoc))
 
     const newdoc: Document = {
       [symbolId]: id,
@@ -215,9 +235,9 @@ export class SplashdbClientMogno extends SplashdbClient {
     return newdoc as T
   }
 
-  async remove(tableName: string, id: string): Promise<void> {
+  async remove(db: string, tableName: string, id: string): Promise<void> {
     const key = `${tableName}/${id}`
-    await this.del(key)
+    await this.basicClient.del(db, key)
   }
 
   match<T extends Document>(
@@ -342,10 +362,13 @@ export class SplashdbClientMogno extends SplashdbClient {
     }
   }
 
-  async find<T extends Document>(option: MongoOption): Promise<T[]> {
+  async find<T extends Document>(
+    db: string,
+    option: MongoOption
+  ): Promise<T[]> {
     const results: T[] = []
     const { $collection, $limit = 10 } = option
-    for await (const doc of this.tableIterator<T>($collection)) {
+    for await (const doc of this.tableIterator<T>(db, $collection)) {
       if (option.$defaultFields) {
         Object.assign(
           doc,

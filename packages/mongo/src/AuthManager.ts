@@ -1,6 +1,6 @@
-import { SplashDBServerOptions } from './Options'
-import { DBManager } from './DBManager'
 import { BootBuffer } from 'bootbuffer'
+import { SplashDBMongoOptions } from './SplashDBMongoOptions'
+import { SplashdbClientMogno } from './SplashDBMongoClient'
 
 type SplashRoleName = 'admin' | 'read' | 'readWrite'
 
@@ -17,14 +17,19 @@ type SplashAuthData = {
 const methodsRequireWritePermission = ['put', 'del', 'batch']
 
 export class AuthManager {
-  constructor(options: Required<SplashDBServerOptions>, dbmanager: DBManager) {
+  constructor(
+    options: Pick<SplashDBMongoOptions, 'adminPassword'>,
+    client: SplashdbClientMogno
+  ) {
+    this.db = 'system'
+    this.client = client
     this.options = options
-    this.dbmanager = dbmanager
     this.roleCache = new Map<string, SplashRole>()
   }
 
-  options: Required<SplashDBServerOptions>
-  dbmanager: DBManager
+  db: string
+  client: SplashdbClientMogno
+  options: Pick<SplashDBMongoOptions, 'adminPassword'>
   roleCache: Map<string, SplashRole>
 
   async can(
@@ -47,10 +52,10 @@ export class AuthManager {
             return false
           }
         }
-        const db = this.dbmanager.getDB('system')
-        if (!db) return false
-        const record = await db.get(
-          `/user/${dbname}/${parsedAuthorization.user}`
+        const record = await this.client.getById(
+          this.db,
+          'user',
+          `${dbname}/${parsedAuthorization.user}`
         )
 
         if (!record) return false

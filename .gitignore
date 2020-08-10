@@ -9,5 +9,6 @@ tests/**/*.js
 build
 !docker/**/entrypoint.js
 isolate-*-v8.log
-.env.development
+.env*
+!.env.development
 *.lerna_backup

@@ -14,7 +14,7 @@ type SplashAuthData = {
   password: string
 }
 
-const methodsRequireWritePermission = ['put', 'del', 'batch']
+const methodsRequireWritePermission = ['update', 'insert', 'remove']
 
 export class AuthManager {
   constructor(
@@ -33,12 +33,14 @@ export class AuthManager {
   roleCache: Map<string, SplashRole>
 
   async can(
-    authorization: string,
-    method: string,
-    dbname: string
+    authorization?: string,
+    method?: string | string[],
+    dbname?: string | string[]
   ): Promise<boolean> {
     try {
       if (!authorization) return false
+      if (typeof method !== 'string') return false
+      if (typeof dbname !== 'string') return false
       if (!this.roleCache.has(authorization)) {
         const parsedAuthorization = this.parseAuthorization(authorization)
         if (!parsedAuthorization) {

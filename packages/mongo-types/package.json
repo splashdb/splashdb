@@ -1,0 +1,20 @@
+{
+  "name": "@splashdb/mongo-types",
+  "version": "0.5.1",
+  "description": "",
+  "main": "build/index.js",
+  "files": [
+    "build/index.js",
+    "build/index.d.ts"
+  ],
+  "scripts": {
+    "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
+    "test": "jest --detectOpenHandles"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "node-ts-scripts": "^0.12.15"
+  }
+}

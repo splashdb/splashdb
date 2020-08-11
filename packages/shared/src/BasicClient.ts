@@ -1,6 +1,6 @@
 import { BootBuffer } from 'bootbuffer'
 import varint from 'varint'
-import { Http2SessionDaemon } from './SessionDaemon'
+import { Http2SessionDaemon } from './Http2SessionDaemon'
 
 type SplashDBIteratorResult = {
   key: Buffer

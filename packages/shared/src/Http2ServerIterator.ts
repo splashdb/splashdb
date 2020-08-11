@@ -19,14 +19,15 @@ export class Http2ServerIterator {
   ended: boolean
   cache: Http2ServerIteratorResult[]
   queue: {
-    resolve: (result: {
-      value: Http2ServerIteratorResult
-      done: boolean
-    }) => void
+    resolve: (
+      result:
+        | IteratorYieldResult<Http2ServerIteratorResult>
+        | IteratorReturnResult<any>
+    ) => void
     reject: (e: Error) => void
   }[]
   server: Http2Server
-  iteratorInstance: AsyncIterable<Http2ServerIteratorResult>
+  iteratorInstance!: AsyncIterable<Http2ServerIteratorResult>
 
   onStream(
     stream: ServerHttp2Stream,
@@ -38,8 +39,8 @@ export class Http2ServerIterator {
       headers,
       flags,
     }
-    if (this.queue.length > 0) {
-      const q = this.queue.shift()
+    const q = this.queue.shift()
+    if (q) {
       q.resolve({ value, done: false })
       return
     }

@@ -1,6 +1,7 @@
 import * as http2 from 'http2'
+import { Http2ServerIterator, Http2StreamIterator } from '@splashdb/shared'
+import BSON from 'bson'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
-import { Http2ServerIterator } from '@splashdb/shared'
 import { AuthManager } from './AuthManager'
 import { SplashdbClientMogno } from './SplashDBMongoClient'
 
@@ -26,19 +27,7 @@ export class SplashDBMongoServer {
       : http2.createServer()
     this.server.on('error', (err) => console.error(err))
 
-    this.server.on('session', (session) => {
-      // if (!(await this.authManager.can(authorization, method, dbname))) {
-      //   stream.respond({
-      //     ':status': 403,
-      //   })
-      //   stream.end('Forbidden')
-      //   stream.close()
-      //   return
-      // }
-
-      console.log(session.socket.localAddress)
-      console.log(session.socket.remoteAddress)
-
+    this.server.on('session', async (session) => {
       if (this.options.debug) {
         console.log(`[server] new session`)
       }
@@ -73,6 +62,48 @@ export class SplashDBMongoServer {
     flags: number
   ): Promise<void> {
     // TODO check authority
-    return
+    const authorization = headers.authorization
+    const dbname = headers['x-splashdb-db']
+    const command = headers['x-splashdb-mongo-command'] as string
+
+    if (typeof command !== 'string' || typeof dbname !== 'string') {
+      stream.respond({
+        ':status': 400,
+      })
+      stream.end('Bad request')
+      stream.close()
+      return
+    }
+
+    if (!(await this.authManager.can(authorization, command, dbname))) {
+      stream.respond({
+        ':status': 403,
+      })
+      stream.end('Forbidden')
+      stream.close()
+      return
+    }
+
+    const caches: Buffer[] = []
+    for await (const data of new Http2StreamIterator(stream).iterator()) {
+      if (typeof data.chunk === 'string') {
+        caches.push(Buffer.from(data.chunk))
+      } else {
+        caches.push(data.chunk)
+      }
+    }
+    const requestBody = Buffer.concat(caches)
+
+    if (command === 'query') {
+      const result = await this.client.find(
+        dbname,
+        BSON.deserialize(requestBody)
+      )
+      if (result) {
+        stream.write(BSON.serialize(result))
+      }
+      stream.end()
+      stream.close()
+    }
   }
 }

@@ -2,32 +2,35 @@ import * as http2 from 'http2'
 
 type Http2SessionDaemonOption = {
   debug?: boolean
+  reconnectInterval?: number
 }
 
-interface PDClientLike {
-  getStorageUrl(): Promise<string>
-  getStorageCa(): Promise<string | Buffer | void>
-}
-
-const defaultHttp2SessionDaemonOption: Http2SessionDaemonOption = {
+const defaultHttp2SessionDaemonOption: Required<Http2SessionDaemonOption> = {
   debug: false,
+  reconnectInterval: 5000,
+}
+
+export interface AuthorityProvider {
+  getAuthority: () => Promise<string | URL>
+  getOptions: () => Promise<
+    void | http2.ClientSessionOptions | http2.SecureClientSessionOptions
+  >
 }
 
 export class Http2SessionDaemon {
-  options: Http2SessionDaemonOption
+  options: Required<Http2SessionDaemonOption>
   connectingPromise!: Promise<void>
   connected: boolean
   destroyed: boolean
   connectError!: Error
   session!: http2.ClientHttp2Session
-  authorization!: string
-  pdClient: PDClientLike
+  authProvider: AuthorityProvider
 
   constructor(
-    pdClient: PDClientLike,
-    options = defaultHttp2SessionDaemonOption
+    authProvider: AuthorityProvider,
+    options: Http2SessionDaemonOption = {}
   ) {
-    this.pdClient = pdClient
+    this.authProvider = authProvider
     this.options = {
       ...defaultHttp2SessionDaemonOption,
       ...options,
@@ -42,16 +45,8 @@ export class Http2SessionDaemon {
       return
     }
 
-    this.connectingPromise = new Promise(async (resolve, reject) => {
+    this.connectingPromise = new Promise(async (resolve) => {
       let handled = false
-
-      try {
-        const uri = await this.pdClient.getStorageUrl()
-        const ca = await this.pdClient.getStorageCa()
-        this.session = http2.connect(uri, {
-          ca: ca || undefined,
-        })
-      } catch (e) {}
 
       const connectListener = (): void => {
         if (!handled) {
@@ -78,25 +73,29 @@ export class Http2SessionDaemon {
           this.connectError = err
           setTimeout(() => {
             if (this.options.debug) {
-              console.log(
-                '[splash client] connect failed, reconnect after 5 seconds.'
-              )
+              console.log('Connect failed, reconnect after 5 seconds.')
             }
             this.createSession()
-          }, 5000)
+          }, this.options.reconnectInterval)
           // Do not call reject() here to avoid unhandled rejection error
           resolve()
         }
       }
+
+      try {
+        const [uri, options] = await Promise.all([
+          this.authProvider.getAuthority(),
+          this.authProvider.getOptions(),
+        ])
+        this.session = http2.connect(uri, options || {})
+      } catch (e) {
+        errListener(e)
+        return
+      }
+
       this.session.once('connect', connectListener)
       this.session.once('error', errListener)
     })
-  }
-
-  updateAuthorization(option: { username: string; password: string }): void {
-    this.authorization = `Basic ${Buffer.from(
-      `${option.username}:${option.password}`
-    ).toString('base64')}`
   }
 
   keepSession(): void {
@@ -106,7 +105,7 @@ export class Http2SessionDaemon {
           this.session.close()
         }
       })
-    }, 5000)
+    }, this.options.reconnectInterval - 10)
 
     this.session.once('close', () => {
       clearInterval(timer)
@@ -126,6 +125,12 @@ export class Http2SessionDaemon {
       console.log(`[splashdb client] session received a goaway event`)
       this.session.close()
     })
+  }
+
+  // a safe way to get session.
+  async getSession(): Promise<http2.ClientHttp2Session> {
+    await this.ok()
+    return this.session
   }
 
   async ok(): Promise<void> {

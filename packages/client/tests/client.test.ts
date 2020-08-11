@@ -1,39 +1,29 @@
-import localNode from '../fixtures/local-node'
-import { SplashdbSampleClient } from '../fixtures/SampleClient'
+import fs from 'fs'
+import path from 'path'
+import { SplashdbClient } from '../src'
 
 global.TextEncoder = require('util').TextEncoder
 global.TextDecoder = require('util').TextDecoder
 
 jest.setTimeout(60000 * 10)
 
-let unloadNode = async (): Promise<void> => {
-  return
-}
-
-beforeAll(async () => {
-  unloadNode = await localNode()
-})
-
-afterAll(async () => {
-  await unloadNode()
-})
-
 describe('Call methods', () => {
   test('put/get/del/iterator', async (done) => {
-    const client = new SplashdbSampleClient()
+    const uri = await fs.promises.readFile(
+      path.resolve(__dirname, '../../../mocks/mongo-node-url.txt'),
+      'utf8'
+    )
+    const client = new SplashdbClient(uri)
     try {
-      const getresult = client.get('key')
-      expect(getresult).resolves.toEqual(null)
-      await client.put('key', 'value')
-      const getresult1 = await client.get('key')
-      expect(getresult1).toEqual(new TextEncoder().encode('value'))
-      await client.del('key')
-      const getresult2 = await client.get('key')
-      expect(getresult2).toEqual(null)
-      for await (const entry of client.iterator({ reverse: false })) {
-        // console.log(`[test] `, entry)
-      }
+      const promise = client.find({
+        $collection: 'user',
+        $query: {},
+      })
+
+      const results = await promise
+      console.log(results)
     } catch (e) {
+      console.error(e)
       throw e
     } finally {
       await client.destroy()

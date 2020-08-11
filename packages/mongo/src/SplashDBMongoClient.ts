@@ -1,12 +1,16 @@
-import { SplashdbBasicClient } from '@splashdb/shared'
+import { SplashdbBasicClient, Http2SessionDaemon } from '@splashdb/shared'
 import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 import BSON from 'bson'
+import {
+  MongoRawDocument,
+  MongoDocument,
+  MongoOperator,
+  MongoOption,
+  MongoValueType,
+} from '@splashdb/mongo-types'
 import { PDClient } from './PDClient'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
-import { Http2SessionDaemon } from '@splashdb/shared/src/SessionDaemon'
-
-type EntryValueType = any
 
 function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {
   a = a.replace(/^(.{8})-(.{4})-(.{4})/, '$3-$2-$1')
@@ -25,86 +29,6 @@ export function cleanDocument<T extends { [x: string]: unknown }>(obj: T): T {
   return obj
 }
 
-export const symbolKey = Symbol('key')
-export const symbolId = Symbol('id')
-
-export interface RawDocument {
-  [x: string]: EntryValueType
-}
-
-export interface Document extends RawDocument {
-  [symbolKey]: string
-  [symbolId]: string
-}
-
-interface MongoOrder {
-  [x: string]: 1 | -1
-}
-
-type MongoOrderById = {
-  [symbolId]: 1 | -1
-}
-
-interface MongoOption {
-  $collection: string
-  $query: MongoOperator
-  $limit?: number
-  // see ParsedOrder
-  $orderby?: MongoOrder | MongoOrderById
-  $skip?: number
-  //
-  $defaultFields?: {
-    [x: string]: EntryValueType
-  }
-}
-
-interface MongoComparison {
-  // Comparison Query Operators
-  $eq?: EntryValueType
-  $gt?: EntryValueType
-  $gte?: EntryValueType
-  $lt?: EntryValueType
-  $lte?: EntryValueType
-  $ne?: EntryValueType
-  $in?: EntryValueType[]
-  $nin?: EntryValueType[]
-}
-
-interface MongoArrayOperator {
-  $all?: EntryValueType[]
-  $elemMatch?: MongoComparison
-  $size?: number
-}
-
-interface MongoEvaluation {
-  // Evaluation Query Operators
-  $where?: <T extends Document>(doc: T) => boolean
-  $regex?: RegExp
-}
-
-interface MongoLogical {
-  // Logical Query Operators
-  $and?: MongoOperator[]
-  $not?: MongoComparison | RegExp
-  $nor?: MongoOperator[]
-  $or?: MongoOperator[]
-}
-
-// interface MongoGeospatial {}
-// interface MongoBitwise {}
-
-interface MongoExpression
-  extends MongoLogical,
-    MongoComparison,
-    MongoArrayOperator,
-    MongoEvaluation {}
-
-interface MongoOperator extends MongoExpression {
-  [x: string]: any
-}
-
-export type ValuesOf<T extends any[]> = T[number]
-
 export class SplashdbClientMogno {
   pdClient: PDClient
   options: SplashDBMongoOptions
@@ -118,8 +42,8 @@ export class SplashdbClientMogno {
     this.basicClient = new SplashdbBasicClient(this.sessionDaemon, options)
   }
 
-  parseRawDocument(entry: { key: any; value: Buffer }): RawDocument {
-    let doc: RawDocument = {}
+  parseRawDocument(entry: { key: any; value: Buffer }): MongoRawDocument {
+    let doc: MongoRawDocument = {}
     let error = null
     try {
       doc = BSON.deserialize(entry.value)
@@ -149,7 +73,7 @@ export class SplashdbClientMogno {
     return doc
   }
 
-  async *tableIterator<T extends Document>(
+  async *tableIterator<T extends MongoDocument>(
     db: string,
     tableName: string,
     afterId?: string
@@ -162,41 +86,40 @@ export class SplashdbClientMogno {
       if (!key.startsWith(options.start)) break
       if (key === options.start) continue
       const id = key.substr(`${tableName}/`.length)
-      const doc: Document = {
-        [symbolId]: id,
-        [symbolKey]: key,
+      const doc: MongoDocument = {
+        _id: id,
       }
       Object.assign(doc, this.parseRawDocument(entry))
       yield doc as T
     }
   }
 
-  async insertById<T extends Document>(
+  async insertById<T extends MongoDocument>(
     db: string,
     tableName: string,
     id: string,
-    doc: Omit<T, typeof symbolId | typeof symbolKey>
+    doc: Omit<T, '_id'>
   ): Promise<T> {
     const key = `${tableName}/${id}`
-    const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
+    const doc2 = { _id: id, ...doc } as T
     await this.basicClient.put(db, key, BSON.serialize(doc))
     return doc2
   }
 
-  async insert<T extends Document>(
+  async insert<T extends MongoDocument>(
     db: string,
     tableName: string,
-    doc: RawDocument
+    doc: MongoRawDocument
   ): Promise<T> {
     const id = uuidv1()
     const key = `${tableName}/${id}`
-    const doc2 = { [symbolId]: id, [symbolKey]: key, ...doc } as T
+    const doc2 = { _id: id, ...doc } as T
     await this.basicClient.put(db, key, BSON.serialize(doc))
 
     return doc2
   }
 
-  async getById<T extends Document>(
+  async getById<T extends MongoDocument>(
     db: string,
     tableName: string,
     id: string
@@ -206,19 +129,18 @@ export class SplashdbClientMogno {
     if (!value) return
 
     const rawdoc = this.parseRawDocument({ key, value: Buffer.from(value) })
-    const doc: Document = {
-      [symbolId]: id,
-      [symbolKey]: key,
+    const doc: MongoDocument = {
+      _id: id,
       ...rawdoc,
     }
     return doc as T
   }
 
-  async update<T extends Document>(
+  async update<T extends MongoDocument>(
     db: string,
     tableName: string,
     id: string,
-    doc: RawDocument
+    doc: MongoRawDocument
   ): Promise<T> {
     const key = `${tableName}/${id}`
     const value = await this.basicClient.get(db, key)
@@ -227,9 +149,8 @@ export class SplashdbClientMogno {
     Object.assign(rawdoc, cleanDocument(doc))
     await this.basicClient.put(db, key, BSON.serialize(rawdoc))
 
-    const newdoc: Document = {
-      [symbolId]: id,
-      [symbolKey]: key,
+    const newdoc: MongoDocument = {
+      _id: id,
       ...rawdoc,
     }
     return newdoc as T
@@ -240,10 +161,10 @@ export class SplashdbClientMogno {
     await this.basicClient.del(db, key)
   }
 
-  match<T extends Document>(
-    operator: MongoOperator | MongoComparison,
+  match<T extends MongoDocument>(
+    operator: MongoOperator,
     doc: T,
-    fieldValue?: EntryValueType
+    fieldValue?: MongoValueType
   ): boolean {
     if ('$and' in operator) {
       if (!Array.isArray(operator.$and)) {
@@ -362,7 +283,7 @@ export class SplashdbClientMogno {
     }
   }
 
-  async find<T extends Document>(
+  async find<T extends MongoDocument>(
     db: string,
     option: MongoOption
   ): Promise<T[]> {
@@ -370,12 +291,7 @@ export class SplashdbClientMogno {
     const { $collection, $limit = 10 } = option
     for await (const doc of this.tableIterator<T>(db, $collection)) {
       if (option.$defaultFields) {
-        Object.assign(
-          doc,
-          option.$defaultFields,
-          { ...doc },
-          { ID: doc[symbolId] }
-        )
+        Object.assign(doc, option.$defaultFields, { ...doc }, { ID: doc._id })
       }
       if (!this.match<T>(option.$query, doc)) {
         continue
@@ -391,8 +307,8 @@ export class SplashdbClientMogno {
       const sortReturnRight = isASC ? 1 : -1
 
       results.sort((left: T, right: T): 1 | -1 | 0 => {
-        const leftFieldValue = left[orderby === '_id' ? symbolId : orderby]
-        const rightFieldValue = right[orderby === '_id' ? symbolId : orderby]
+        const leftFieldValue = left[orderby]
+        const rightFieldValue = right[orderby]
         if (orderby === '_id') {
           return uuidV1Compare(
             leftFieldValue as string,

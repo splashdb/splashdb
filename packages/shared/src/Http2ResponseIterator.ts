@@ -1,33 +1,37 @@
-import { ServerHttp2Stream } from 'http2'
+import * as http2 from 'http2'
 
-type Http2StreamIteratorResult = {
+type Http2ResponseIteratorResult = {
   chunk: string | Buffer
 }
 
-export class Http2StreamIterator {
-  constructor(stream: ServerHttp2Stream) {
+export class Http2ResponseIterator {
+  constructor(stream: http2.ClientHttp2Stream) {
     this.stream = stream
     this.cache = []
     this.queue = []
     this.ended = false
+    this.onResponse = this.onResponse.bind(this)
+    this.onError = this.onError.bind(this)
     this.onData = this.onData.bind(this)
     this.onEnd = this.onEnd.bind(this)
+    this.stream.on('response', this.onResponse)
+    this.stream.on('error', this.onError)
     this.stream.on('data', this.onData)
     this.stream.on('end', this.onEnd)
   }
 
   ended: boolean
-  cache: Http2StreamIteratorResult[]
+  cache: Http2ResponseIteratorResult[]
   queue: {
     resolve: (
       result:
-        | IteratorYieldResult<Http2StreamIteratorResult>
+        | IteratorYieldResult<Http2ResponseIteratorResult>
         | IteratorReturnResult<any>
     ) => void
     reject: (e: Error) => void
   }[]
-  stream: ServerHttp2Stream
-  iteratorInstance!: AsyncIterable<Http2StreamIteratorResult>
+  stream: http2.ClientHttp2Stream
+  iteratorInstance!: AsyncIterable<Http2ResponseIteratorResult>
 
   onEnd(): void {
     this.ended = true
@@ -36,6 +40,31 @@ export class Http2StreamIterator {
     const q = this.queue.shift()
     if (q) {
       q.resolve({ value: undefined, done: true })
+    }
+  }
+
+  onError(reson?: any): void {
+    this.ended = true
+    const q = this.queue.shift()
+    if (q) {
+      q.reject(reson)
+    }
+  }
+
+  onResponse(headers: http2.IncomingHttpHeaders, flags?: number): void {
+    const status = headers[':status']
+    if (typeof status === 'number') {
+      if (status !== 200) {
+        this.ended = true
+        const q = this.queue.shift()
+        if (q) {
+          if (status === 404) {
+            q.resolve({ done: true, value: undefined })
+          } else {
+            q.reject(new Error(`HTTP_ERROR_${headers[':status']}`))
+          }
+        }
+      }
     }
   }
 
@@ -51,13 +80,13 @@ export class Http2StreamIterator {
     this.cache.push(value)
   }
 
-  async *iterator(): AsyncIterableIterator<Http2StreamIteratorResult> {
+  async *iterator(): AsyncIterableIterator<Http2ResponseIteratorResult> {
     if (!this.iteratorInstance) {
-      const iteratorInstance: AsyncIterable<Http2StreamIteratorResult> = {
+      const iteratorInstance: AsyncIterable<Http2ResponseIteratorResult> = {
         [Symbol.asyncIterator]: () => {
           return {
             return: async (): Promise<
-              IteratorResult<Http2StreamIteratorResult>
+              IteratorResult<Http2ResponseIteratorResult>
             > => {
               try {
                 const value = this.cache.shift()
@@ -72,7 +101,7 @@ export class Http2StreamIterator {
                 }
               }
             },
-            next: (): Promise<IteratorResult<Http2StreamIteratorResult>> => {
+            next: (): Promise<IteratorResult<Http2ResponseIteratorResult>> => {
               const result = this.cache.shift()
               if (result) {
                 if (result instanceof Error) {

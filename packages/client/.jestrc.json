@@ -4,7 +4,7 @@
     "ts",
     "js"
   ],
-  "globalSetup": "./fixtures/jest-setup.ts",
+  "globalSetup": "../../fixtures/jest-setup.ts",
   "coverageDirectory": "./coverage",
   "coverageReporters": [
     "lcov"

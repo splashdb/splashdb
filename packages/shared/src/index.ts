@@ -1,3 +1,5 @@
 export * from './BasicClient'
 export * from './Http2ServerIterator'
 export * from './Http2StreamIterator'
+export * from './Http2ResponseIterator'
+export * from './Http2SessionDaemon'

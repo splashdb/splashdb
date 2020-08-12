@@ -2,7 +2,7 @@ FROM node:14.7.0-alpine
 
 RUN mkdir -p /usr/local/splashdb/mongo-node
 
-COPY build/index.js  /usr/local/splashdb/mongo-node/index.js
+COPY docker/index.js  /usr/local/splashdb/mongo-node/index.js
 COPY package.json  /usr/local/splashdb/mongo-node/package.json
 COPY package-lock.json  /usr/local/splashdb/mongo-node/package-lock.json
 
@@ -12,4 +12,4 @@ RUN npm install --only=production
 
 EXPOSE 8743
 
-CMD [ "node", "build/index.js" ]
+CMD [ "node", "index.js" ]

@@ -8,7 +8,7 @@ global.TextDecoder = require('util').TextDecoder
 jest.setTimeout(60000 * 10)
 
 describe('Call methods', () => {
-  test('put/get/del/iterator', async (done) => {
+  test('find', async (done) => {
     const uri = await fs.promises.readFile(
       path.resolve(__dirname, '../../../mocks/mongo-node-url.txt'),
       'utf8'

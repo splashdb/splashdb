@@ -1,5 +1,6 @@
 import fs from 'fs'
-import { SplashDBServer, SplashDBServerOptions } from '@splashdb/storage'
+import path from 'path'
+import { SplashDBServer, SplashDBServerOptions } from '../src'
 
 export async function main(): Promise<void> {
   const secure = process.env.SPLASHDB_SECURE === 'true'
@@ -13,7 +14,9 @@ export async function main(): Promise<void> {
   const options: SplashDBServerOptions = {
     debug,
     secure,
-    dbpath: '/data/db',
+    dbpath: process.env.SPLASHDB_DBPATH
+      ? path.resolve(process.cwd(), process.env.SPLASHDB_DBPATH)
+      : '/data/db',
     port,
   }
   if (options.secure) {

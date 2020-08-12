@@ -180,6 +180,7 @@ export class SplashDBServer {
     stream: http2.ServerHttp2Stream
   ): Promise<void> {
     let iteratorCreated = false
+    let streamWrite = false
     for await (const { chunk } of new Http2StreamIterator(stream).iterator()) {
       if (iteratorCreated) {
         break
@@ -201,11 +202,12 @@ export class SplashDBServer {
         // format: <Buffer bbLength(varint) bb(Buffer) >
         stream.write(Buffer.from(varint.encode(bb.buffer.length)))
         stream.write(bb.buffer)
+        streamWrite = true
       }
       break
     }
 
-    // stream.write(Buffer.alloc(0))
+    if (!streamWrite) stream.write(Buffer.alloc(0))
     stream.end()
   }
 

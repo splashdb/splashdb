@@ -82,6 +82,8 @@ export class SplashDBMongoServer {
       stream.end('Forbidden')
       stream.close()
       return
+    } else {
+      console.log('auth check ✓')
     }
 
     const caches: Buffer[] = []
@@ -93,16 +95,26 @@ export class SplashDBMongoServer {
       }
     }
     const requestBody = Buffer.concat(caches)
+    console.log('requests body ✓')
+    console.log(`command: ${command}`)
 
-    if (command === 'query') {
-      const result = await this.client.find(
-        dbname,
-        BSON.deserialize(requestBody)
-      )
-      if (result) {
-        stream.write(BSON.serialize(result))
+    try {
+      if (command === 'query') {
+        const params = BSON.deserialize(requestBody)
+        console.log(`params: `, params)
+        const result = await this.client.find(dbname, params)
+        console.log(`result ✓`)
+        if (result) {
+          stream.write(BSON.serialize(result))
+        }
+        stream.end()
       }
-      stream.end()
+    } catch (e) {
+      stream.respond({
+        ':status': 500,
+      })
+      stream.end('InternalServerError')
+    } finally {
       stream.close()
     }
   }

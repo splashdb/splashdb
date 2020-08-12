@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { SplashDBMongoServer, SplashDBMongoOptions } from '@splashdb/mongo'
+import { SplashDBMongoServer, SplashDBMongoOptions } from '../src'
 
 export async function main(): Promise<void> {
   const debug = process.env.DEBUG === 'true'

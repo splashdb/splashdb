@@ -29,7 +29,7 @@ export class AuthManager {
 
   db: string
   client: SplashdbClientMogno
-  options: Pick<SplashDBMongoOptions, 'adminPassword'>
+  options: Pick<SplashDBMongoOptions, 'adminPassword' | 'debug'>
   roleCache: Map<string, SplashRole>
 
   async can(
@@ -43,6 +43,9 @@ export class AuthManager {
       if (typeof dbname !== 'string') return false
       if (!this.roleCache.has(authorization)) {
         const parsedAuthorization = this.parseAuthorization(authorization)
+        if (this.options.debug) {
+          console.log({ parsedAuthorization })
+        }
         if (!parsedAuthorization) {
           return false
         }

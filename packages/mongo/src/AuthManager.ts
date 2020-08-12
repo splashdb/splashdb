@@ -1,20 +1,14 @@
 import { BootBuffer } from 'bootbuffer'
+import { MongoCommandOption } from '@splashdb/mongo-types'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 import { SplashdbClientMogno } from './SplashDBMongoClient'
 
 type SplashRoleName = 'admin' | 'read' | 'readWrite'
 
-type SplashRole = {
-  db: string
-  role: SplashRoleName
-}
-
 type SplashAuthData = {
   user: string
   password: string
 }
-
-const methodsRequireWritePermission = ['update', 'insert', 'remove']
 
 export class AuthManager {
   constructor(
@@ -24,24 +18,25 @@ export class AuthManager {
     this.db = 'system'
     this.client = client
     this.options = options
-    this.roleCache = new Map<string, SplashRole>()
+    this.roleCache = new Map<string, SplashRoleName>()
   }
 
   db: string
   client: SplashdbClientMogno
   options: Pick<SplashDBMongoOptions, 'adminPassword' | 'debug'>
-  roleCache: Map<string, SplashRole>
+  roleCache: Map<string, SplashRoleName>
 
   async can(
-    authorization?: string,
-    method?: string | string[],
-    dbname?: string | string[]
+    authorization: string,
+    commandOption: MongoCommandOption<{}>,
+    dbname = this.db
   ): Promise<boolean> {
     try {
       if (!authorization) return false
-      if (typeof method !== 'string') return false
-      if (typeof dbname !== 'string') return false
-      if (!this.roleCache.has(authorization)) {
+      if (typeof commandOption !== 'object') return false
+      const roleCacheId = `${authorization}:${dbname}`
+
+      if (!this.roleCache.has(roleCacheId)) {
         const parsedAuthorization = this.parseAuthorization(authorization)
         if (this.options.debug) {
           console.log({ parsedAuthorization })
@@ -51,16 +46,15 @@ export class AuthManager {
         }
         if (parsedAuthorization.user === 'admin') {
           if (parsedAuthorization.password === this.options.adminPassword) {
-            this.roleCache.set(authorization, { role: 'admin', db: 'system' })
+            this.roleCache.set(roleCacheId, 'admin')
             return true
           } else {
             return false
           }
         }
-        const record = await this.client.getById(
+        const record = await this.client.basicClient.get(
           this.db,
-          'user',
-          `${dbname}/${parsedAuthorization.user}`
+          `user/${dbname}/${parsedAuthorization.user}`
         )
 
         if (!record) return false
@@ -70,22 +64,18 @@ export class AuthManager {
         }
         if (result.password !== parsedAuthorization.password) return false
         const { role } = result
-        this.roleCache.set(authorization, { role, db: dbname })
+        this.roleCache.set(roleCacheId, role)
       }
 
-      const role = this.roleCache.get(authorization)
+      const role = this.roleCache.get(roleCacheId)
       if (!role) return false
-      if (role.role === 'admin') return true
-      if (dbname !== role.db) return false
-      if (
-        methodsRequireWritePermission.includes(method) &&
-        role.role === 'read'
-      ) {
+      if (role === 'admin') return true
+      if (role === 'read' && !('find' in commandOption)) {
         return false
       }
       return true
     } catch (e) {
-      console.error(e)
+      if (this.options.debug) console.error(e)
       return false
     }
   }

@@ -1,13 +1,14 @@
 import { BootBuffer } from 'bootbuffer'
 import varint from 'varint'
 import { Http2SessionDaemon } from './Http2SessionDaemon'
+import { Http2ResponseIterator } from './Http2ResponseIterator'
 
 type SplashDBIteratorResult = {
   key: Buffer
   value: Buffer
 }
 
-export type SplashdbBasicClientOptions = {
+export type SplashdbStorageClientOptions = {
   debug?: boolean
 }
 
@@ -17,91 +18,70 @@ function isBrokenError(e: Error): boolean {
   return false
 }
 
-export class SplashdbBasicClient {
+export class SplashdbStorageClient {
   constructor(
     sessionDaemon: Http2SessionDaemon,
-    options: SplashdbBasicClientOptions
+    options: SplashdbStorageClientOptions
   ) {
     this.sessionDaemon = sessionDaemon
     this.options = { debug: false, ...options }
   }
 
   sessionDaemon: Http2SessionDaemon
-  options: Required<SplashdbBasicClientOptions>
+  options: Required<SplashdbStorageClientOptions>
 
   async request(
     db: string,
     method: 'get' | 'put' | 'del',
     requestBuffer: Buffer
-  ): Promise<Uint8Array> {
+  ): Promise<Uint8Array | void> {
     await this.sessionDaemon.ok()
-    return await new Promise((resolve, reject) => {
-      let handled = false
-      const cache: Buffer[] = []
+    const cache: Buffer[] = []
 
-      const req = this.sessionDaemon.session.request({
-        // GET / DELETE methods cannot use req.write
-        ':method': 'POST',
-        'x-splashdb-version': '1.0',
-        'x-splashdb-db': db,
-        'x-splashdb-method': method,
-      })
-
-      req.on('response', (headers, flags) => {
-        const status = headers[':status']
-        if (status !== 200) {
-          handled = true
-          if (status === 404) {
-            return resolve()
-          }
-          reject(new Error(`HTTP_ERROR_${headers[':status']}`))
-        }
-        if (method === 'put' || method === 'del') {
-          handled = true
-          resolve()
-        }
-      })
-
-      req.on('data', (chunk) => {
-        if (handled) return
-        if (typeof chunk === 'string') {
-          cache.push(Buffer.from(chunk))
-        } else {
-          cache.push(chunk)
-        }
-      })
-
-      req.on('error', (e) => {
-        if (isBrokenError(e)) {
-          this.sessionDaemon.session.close()
-        }
-        reject(e)
-      })
-
-      req.once('end', () => {
-        if (handled) return
-        const totalLength = cache.reduce((total, chunk) => {
-          total += chunk.byteLength
-          return total
-        }, 0)
-        const result = new Uint8Array(totalLength)
-        let prevChunkSize = 0
-        for (const chunk of cache) {
-          result.set(chunk, prevChunkSize)
-          prevChunkSize = chunk.byteLength
-        }
-        handled = true
-        resolve(result)
-        req.close()
-      })
-
-      req.write(requestBuffer)
-      req.end()
+    const req = this.sessionDaemon.session.request({
+      // GET / DELETE methods cannot use req.write
+      ':method': 'POST',
+      'x-splashdb-version': '1.0',
+      'x-splashdb-db': db,
+      'x-splashdb-method': method,
     })
+
+    req.write(requestBuffer)
+    req.end()
+
+    try {
+      for await (const data of new Http2ResponseIterator(req).iterator()) {
+        const chunk =
+          typeof data.chunk === 'string' ? Buffer.from(data.chunk) : data.chunk
+        cache.push(chunk)
+      }
+
+      const totalLength = cache.reduce((total, chunk) => {
+        total += chunk.byteLength
+        return total
+      }, 0)
+      if (totalLength === 0) {
+        return
+      }
+      const result = new Uint8Array(totalLength)
+      let prevChunkSize = 0
+      for (const chunk of cache) {
+        result.set(chunk, prevChunkSize)
+        prevChunkSize += chunk.byteLength
+      }
+      return result
+    } catch (e) {
+      if (isBrokenError(e)) {
+        this.sessionDaemon.session.close()
+      }
+      throw e
+    } finally {
+      req.close()
+    }
   }
 
   buildPayload(params: {
-    [x: string]: Buffer | Uint8Array | string | number | boolean
+    [x: string]: Buffer | Uint8Array | string | number | boolean | void
   }): Buffer {
     const bb = new BootBuffer()
     for (const key in params) {
@@ -111,7 +91,7 @@ export class SplashdbBasicClient {
     return bb.buffer
   }
 
-  async get(db: string, key: string | Buffer): Promise<Uint8Array> {
+  async get(db: string, key: string | Buffer): Promise<Uint8Array | void> {
     const result = await this.request(
       db,
       'get',
@@ -157,13 +137,13 @@ export class SplashdbBasicClient {
     if (this.sessionDaemon.session.connecting) {
       await this.sessionDaemon.ok()
     }
-    type SplashDBIterator = {
-      value: SplashDBIteratorResult | undefined
-      done: boolean
-    }
     const cache: (SplashDBIteratorResult | Error)[] = []
     const queue: {
-      resolve: (ite: SplashDBIterator) => void
+      resolve: (
+        result:
+          | IteratorYieldResult<SplashDBIteratorResult>
+          | IteratorReturnResult<any>
+      ) => void
       reject: (reason?: any) => void
     }[] = []
     let ended = false
@@ -305,6 +285,12 @@ export class SplashdbBasicClient {
     const payload = this.buildPayload(iteratorOption)
     req.write(payload)
 
+    // Here did not use for...await...of because this iterator
+    // could be broken by SplashdbStorageClient.iterator()
+    // caller function, then `req` should be end()
+    //
+    // Another solution is use hook-able iterator like Rippledb.
+    // @see https://github.com/heineiuo/rippledb/blob/master/src/IteratorHelper.ts
     const reqReadIterator: AsyncIterable<SplashDBIteratorResult> = {
       [Symbol.asyncIterator]() {
         return {

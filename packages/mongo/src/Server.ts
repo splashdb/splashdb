@@ -4,6 +4,7 @@ import BSON from 'bson'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 import { AuthManager } from './AuthManager'
 import { SplashdbClientMogno } from './SplashDBMongoClient'
+import { MongoCommandOption } from '@splashdb/mongo-types'
 
 export class SplashDBMongoServer {
   constructor(options: SplashDBMongoOptions) {
@@ -61,31 +62,6 @@ export class SplashDBMongoServer {
     headers: http2.IncomingHttpHeaders,
     flags: number
   ): Promise<void> {
-    // TODO check authority
-    const authorization = headers.authorization
-    const dbname = headers['x-splashdb-db']
-    const command = headers['x-splashdb-mongo-command'] as string
-
-    if (typeof command !== 'string' || typeof dbname !== 'string') {
-      stream.respond({
-        ':status': 400,
-      })
-      stream.end('Bad request')
-      stream.close()
-      return
-    }
-
-    if (!(await this.authManager.can(authorization, command, dbname))) {
-      stream.respond({
-        ':status': 403,
-      })
-      stream.end('Forbidden')
-      stream.close()
-      return
-    } else {
-      console.log('auth check ✓')
-    }
-
     const caches: Buffer[] = []
     for await (const data of new Http2StreamIterator(stream).iterator()) {
       if (typeof data.chunk === 'string') {
@@ -95,18 +71,26 @@ export class SplashDBMongoServer {
       }
     }
     const requestBody = Buffer.concat(caches)
-    console.log('requests body ✓')
-    console.log(`command: ${command}`)
 
     try {
-      if (command === 'query') {
-        const params = BSON.deserialize(requestBody)
-        console.log(`params: `, params)
-        const result = await this.client.find(dbname, params)
-        console.log(`result ✓`)
-        if (result) {
-          stream.write(BSON.serialize(result))
-        }
+      const params = BSON.deserialize(requestBody) as MongoCommandOption<{}>
+      const authorization = headers.authorization as string
+      const dbname = headers['x-splashdb-db'] as string
+
+      if (!(await this.authManager.can(authorization, params, dbname))) {
+        stream.respond({
+          ':status': 403,
+        })
+        stream.end('Forbidden')
+        return
+      }
+
+      try {
+        const result = await this.client.runCommand(dbname, params)
+        stream.write(BSON.serialize(result))
+      } catch (e) {
+        stream.write(BSON.serialize({ ok: 0 }))
+      } finally {
         stream.end()
       }
     } catch (e) {

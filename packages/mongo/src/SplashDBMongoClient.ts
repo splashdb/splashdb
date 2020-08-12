@@ -1,13 +1,19 @@
-import { SplashdbBasicClient, Http2SessionDaemon } from '@splashdb/shared'
+import { SplashdbStorageClient, Http2SessionDaemon } from '@splashdb/shared'
 import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 import BSON from 'bson'
 import {
   MongoRawDocument,
   MongoDocument,
-  MongoOperator,
-  MongoOption,
+  MongoCommandOutput,
+  MongoCommandFindOption,
+  MongoCommandInsertOption,
+  MongoCommandInsertOutput,
+  MongoFilter,
   MongoValueType,
+  MongoCommandOption,
+  MongoCommandDeleteOption,
+  MongoCommandDeleteOutput,
 } from '@splashdb/mongo-types'
 import { PDClient } from './PDClient'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
@@ -32,14 +38,14 @@ export function cleanDocument<T extends { [x: string]: unknown }>(obj: T): T {
 export class SplashdbClientMogno {
   pdClient: PDClient
   options: SplashDBMongoOptions
-  basicClient: SplashdbBasicClient
+  basicClient: SplashdbStorageClient
   sessionDaemon: Http2SessionDaemon
 
   constructor(options: SplashDBMongoOptions) {
     this.options = options
     this.pdClient = new PDClient(options)
     this.sessionDaemon = new Http2SessionDaemon(this.pdClient, this.options)
-    this.basicClient = new SplashdbBasicClient(this.sessionDaemon, options)
+    this.basicClient = new SplashdbStorageClient(this.sessionDaemon, options)
   }
 
   parseRawDocument(entry: { key: any; value: Buffer }): MongoRawDocument {
@@ -71,6 +77,30 @@ export class SplashdbClientMogno {
     }
 
     return doc
+  }
+
+  async runCommand<T extends MongoRawDocument>(
+    db: string,
+    options: MongoCommandOption<T>
+  ): Promise<MongoCommandOutput<T>> {
+    if ('find' in options) {
+      const data = await this.find<T & { _id: string }>(db, options)
+      return {
+        _data: BSON.serialize(data),
+        cursor: {
+          toArray: async (): Promise<T[]> => {
+            return Promise.resolve(data)
+          },
+        },
+        n: data.length,
+        ok: 1,
+      }
+    } else if ('insert' in options) {
+      return await this.insert<T>(db, options)
+    } else if ('delete' in options) {
+      return await this.delete(db, options)
+    }
+    throw new Error('Unknown command')
   }
 
   async *tableIterator<T extends MongoDocument>(
@@ -106,17 +136,24 @@ export class SplashdbClientMogno {
     return doc2
   }
 
-  async insert<T extends MongoDocument>(
+  async insert<T extends MongoRawDocument>(
     db: string,
-    tableName: string,
-    doc: MongoRawDocument
-  ): Promise<T> {
-    const id = uuidv1()
-    const key = `${tableName}/${id}`
-    const doc2 = { _id: id, ...doc } as T
-    await this.basicClient.put(db, key, BSON.serialize(doc))
-
-    return doc2
+    option: MongoCommandInsertOption<T>
+  ): Promise<MongoCommandInsertOutput> {
+    const { insert: document, documents } = option
+    if (documents && documents.length > 0) {
+      const results = await Promise.all(
+        documents.map(async (doc) => {
+          const id = uuidv1()
+          const key = `${document}/${id}`
+          const doc2 = { _id: id, ...doc }
+          await this.basicClient.put(db, key, BSON.serialize(doc))
+          return doc2
+        })
+      )
+      return { n: results.length, ok: 1 }
+    }
+    return { n: 0, ok: 1 }
   }
 
   async getById<T extends MongoDocument>(
@@ -156,16 +193,35 @@ export class SplashdbClientMogno {
     return newdoc as T
   }
 
-  async remove(db: string, tableName: string, id: string): Promise<void> {
-    const key = `${tableName}/${id}`
-    await this.basicClient.del(db, key)
+  async delete(
+    db: string,
+    options: MongoCommandDeleteOption
+  ): Promise<MongoCommandDeleteOutput> {
+    const { delete: collection, deletes } = options
+    let n = 0
+    if (deletes && deletes.length > 0) {
+      for await (const state of deletes) {
+        const results = await this.find(db, {
+          find: collection,
+          filter: state.q,
+          limit: state.limit,
+        })
+        for (const item of results) {
+          const key = `${collection}/${item._id}`
+          await this.basicClient.del(db, key)
+          n += 1
+        }
+      }
+    }
+    return { ok: 1, n }
   }
 
   match<T extends MongoDocument>(
-    operator: MongoOperator,
+    filter: MongoFilter,
     doc: T,
     fieldValue?: MongoValueType
   ): boolean {
+    const operator = filter
     if ('$and' in operator) {
       if (!Array.isArray(operator.$and)) {
         throw new Error('Invalid value for operator $and')
@@ -285,24 +341,26 @@ export class SplashdbClientMogno {
 
   async find<T extends MongoDocument>(
     db: string,
-    option: MongoOption
+    option: MongoCommandFindOption<T>
   ): Promise<T[]> {
     const results: T[] = []
-    const { $collection, $limit = 10 } = option
-    for await (const doc of this.tableIterator<T>(db, $collection)) {
-      if (option.$defaultFields) {
-        Object.assign(doc, option.$defaultFields, { ...doc }, { ID: doc._id })
-      }
-      if (!this.match<T>(option.$query, doc)) {
-        continue
+    const { find: collection, limit = 10, skip = 0 } = option
+    for await (const doc of this.tableIterator<T>(db, collection)) {
+      // if (option.$defaultFields) {
+      //   Object.assign(doc, option.$defaultFields, { ...doc }, { ID: doc._id })
+      // }
+      if (option.filter) {
+        if (!this.match<T>(option.filter, doc)) {
+          continue
+        }
       }
       results.push(doc)
-      if (!option.$orderby && results.length >= $limit) break
+      if (!option.sort && results.length >= limit && limit > 0) break
     }
 
-    if (option.$orderby) {
-      const orderby = Object.keys(option.$orderby)[0]
-      const isASC = option.$orderby[orderby] === 1
+    if (option.sort) {
+      const orderby = Object.keys(option.sort)[0]
+      const isASC = option.sort[orderby] === 1
       const sortReturnLeft = isASC ? -1 : 1
       const sortReturnRight = isASC ? 1 : -1
 
@@ -321,7 +379,6 @@ export class SplashdbClientMogno {
         }
       })
     }
-    results.splice(0, option.$skip)
-    return results.splice(0, $limit)
+    return results.splice(skip, limit) as T[]
   }
 }

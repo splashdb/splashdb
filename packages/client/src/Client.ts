@@ -1,6 +1,19 @@
 import * as http2 from 'http2'
 import * as BSON from 'bson'
-import { MongoOption, MongoDocument, MongoCommand } from '@splashdb/mongo-types'
+import {
+  MongoCommandFindOption,
+  MongoCommandFindOutput,
+  MongoCommandInsertOption,
+  MongoCommandInsertOutput,
+  MongoCommandOption,
+  MongoCommandOutput,
+  MongoCommandFindAndModifyOption,
+  MongoCommandFindAndModifyOutput,
+  MongoCommandDeleteOption,
+  MongoCommandDeleteOutput,
+  MongoCommandUpdateOption,
+  MongoCommandUpdateOutput,
+} from '@splashdb/mongo-types'
 import {
   Http2ResponseIterator,
   AuthorityProvider,
@@ -66,9 +79,13 @@ export class SplashdbClient {
   }
 
   async request(
-    command: MongoCommand,
+    protocol: 'mongo' | 'sql' | 'ripple',
     requestBuffer: Buffer
-  ): Promise<Uint8Array | void> {
+  ): Promise<Buffer | void> {
+    if (protocol !== 'mongo') {
+      throw new Error('Splashdb client only support mongo protocol yet.')
+    }
+
     const session = await this.sessionDaemon.getSession()
     const cache: Buffer[] = []
 
@@ -76,8 +93,7 @@ export class SplashdbClient {
       // GET / DELETE methods cannot use req.write
       authorization: this.basicAuth,
       ':method': 'POST',
-      'x-splashdb-protocol': 'mongo',
-      'x-splashdb-mongo-command': command,
+      'x-splashdb-protocol': protocol,
       'x-splashdb-version': '1.0',
       'x-splashdb-db': this.db,
     })
@@ -112,22 +128,50 @@ export class SplashdbClient {
       prevChunkSize += chunk.byteLength
     }
     req.close()
-    return result
+    return Buffer.from(result)
   }
 
-  async find<T extends MongoDocument>(option: MongoOption): Promise<T[]> {
-    const result = await this.request('query', BSON.serialize(option))
-    if (!result) return []
-    const docs = await BSON.deserialize(Buffer.from(result))
-    return docs
-  }
+  async runCommand<T>(
+    option: MongoCommandFindOption<T>
+  ): Promise<MongoCommandFindOutput<T>>
 
-  async update(option: MongoOption): Promise<void> {
-    await this.request('update', BSON.serialize(option))
-  }
+  async runCommand<T>(
+    option: MongoCommandInsertOption<T>
+  ): Promise<MongoCommandInsertOutput>
 
-  async remove(option: MongoOption): Promise<void> {
-    await this.request('remove', BSON.serialize(option))
+  async runCommand<T>(
+    option: MongoCommandFindAndModifyOption<T>
+  ): Promise<MongoCommandFindAndModifyOutput>
+
+  async runCommand<T>(
+    option: MongoCommandDeleteOption
+  ): Promise<MongoCommandDeleteOutput>
+
+  async runCommand<T>(
+    option: MongoCommandUpdateOption<T>
+  ): Promise<MongoCommandUpdateOutput>
+
+  async runCommand<T>(
+    option: MongoCommandOption<T>
+  ): Promise<MongoCommandOutput<T>> {
+    const result = await this.request('mongo', BSON.serialize(option))
+    if (!result) return { ok: 0 }
+    if (result.length < 5) return { ok: 0 }
+    const parsed = BSON.deserialize(result)
+    if ('find' in result) {
+      return {
+        n: parsed.n,
+        ok: parsed.ok,
+        cursor: {
+          toArray: async (): Promise<T[]> => {
+            if (parsed.ok === 0 || parsed.n === 0) return []
+            const obj = BSON.deserialize(parsed._data.buffer)
+            return Object.values(obj)
+          },
+        },
+      }
+    }
+    return parsed
   }
 
   async destroy(): Promise<void> {

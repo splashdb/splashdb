@@ -1,6 +1,6 @@
-import { SplashdbBasicClientOptions } from '@splashdb/shared'
+import { SplashdbStorageClientOptions } from '@splashdb/shared'
 
-export interface SplashDBMongoOptions extends SplashdbBasicClientOptions {
+export interface SplashDBMongoOptions extends SplashdbStorageClientOptions {
   debug?: boolean
   secure?: boolean
   secureKey?: string | Buffer

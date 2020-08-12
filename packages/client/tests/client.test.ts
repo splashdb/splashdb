@@ -15,13 +15,28 @@ describe('Call methods', () => {
     )
     const client = new SplashdbClient(uri)
     try {
-      const promise = client.find({
-        $collection: 'user',
-        $query: {},
+      console.time('find')
+      const results = await client.runCommand({
+        find: 'user',
+        filter: {},
       })
-
-      const results = await promise
-      console.log(results)
+      const data = await results.cursor.toArray()
+      console.timeEnd('find')
+      // const results2 = await client.runCommand({
+      //   insert: 'user',
+      //   documents: [
+      //     {
+      //       username: 'apple',
+      //       password: '123456',
+      //     },
+      //   ],
+      // })
+      // console.log(results2)
+      // const results3 = await client.runCommand({
+      //   find: 'user',
+      //   filter: {},
+      // })
+      // console.log(results3)
     } catch (e) {
       console.error(e)
       throw e

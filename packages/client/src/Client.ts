@@ -141,7 +141,7 @@ export class SplashdbClient {
 
   async runCommand<T>(
     option: MongoCommandFindAndModifyOption<T>
-  ): Promise<MongoCommandFindAndModifyOutput>
+  ): Promise<MongoCommandFindAndModifyOutput<T>>
 
   async runCommand<T>(
     option: MongoCommandDeleteOption
@@ -149,21 +149,21 @@ export class SplashdbClient {
 
   async runCommand<T>(
     option: MongoCommandUpdateOption<T>
-  ): Promise<MongoCommandUpdateOutput>
+  ): Promise<MongoCommandUpdateOutput<T>>
 
   async runCommand<T>(
     option: MongoCommandOption<T>
   ): Promise<MongoCommandOutput<T>> {
     const result = await this.request('mongo', BSON.serialize(option))
-    if (!result) return { ok: 0 }
-    if (result.length < 5) return { ok: 0 }
+    if (!result) return { ok: 0, n: 0 }
+    if (result.length < 5) return { ok: 0, n: 0 }
     const parsed = BSON.deserialize(result)
-    if ('find' in result) {
+    if ('find' in option) {
       return {
         n: parsed.n,
         ok: parsed.ok,
         cursor: {
-          toArray: async (): Promise<T[]> => {
+          toArray: async (): Promise<(T & { _id: string })[]> => {
             if (parsed.ok === 0 || parsed.n === 0) return []
             const obj = BSON.deserialize(parsed._data.buffer)
             return Object.values(obj)

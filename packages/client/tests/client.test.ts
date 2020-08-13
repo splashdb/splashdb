@@ -15,28 +15,70 @@ describe('Call methods', () => {
     )
     const client = new SplashdbClient(uri)
     try {
-      console.time('find')
-      const results = await client.runCommand({
+      const deleted = await client.runCommand({
+        delete: 'user',
+        deletes: [
+          {
+            q: {},
+            limit: 0,
+          },
+        ],
+      })
+      console.info(`Deleted ${deleted.n} documents.`)
+
+      const insertResult = await client.runCommand({
+        insert: 'user',
+        documents: [
+          {
+            username: 'example',
+            password: 'password',
+          },
+        ],
+      })
+      expect(insertResult.n).toBe(1)
+
+      const findOutput = await client.runCommand({
         find: 'user',
         filter: {},
       })
-      const data = await results.cursor.toArray()
-      console.timeEnd('find')
-      // const results2 = await client.runCommand({
-      //   insert: 'user',
-      //   documents: [
-      //     {
-      //       username: 'apple',
-      //       password: '123456',
-      //     },
-      //   ],
-      // })
-      // console.log(results2)
-      // const results3 = await client.runCommand({
-      //   find: 'user',
-      //   filter: {},
-      // })
-      // console.log(results3)
+      const findOutputData = await findOutput.cursor.toArray()
+      expect(findOutputData[0].username).toBe('example')
+
+      const updateOutput = await client.runCommand({
+        update: 'user',
+        updates: [
+          {
+            q: {},
+            u: {
+              username: 'example',
+              password: 'new-password',
+            },
+          },
+          {
+            upsert: true,
+            q: {
+              username: 'example2',
+            },
+            u: {
+              username: 'example2',
+              password: 'password2',
+            },
+          },
+        ],
+      })
+      expect(updateOutput.ok).toBe(1)
+      expect(updateOutput.n).toBe(2)
+      expect(updateOutput.upserted[0].username).toBe('example2')
+
+      const findAndModifyOutput = await client.runCommand({
+        findAndModify: 'user',
+        remove: true,
+        query: {
+          username: 'example2',
+        },
+      })
+      expect(findAndModifyOutput.ok).toBe(1)
+      expect(findAndModifyOutput.value.username).toBe('example2')
     } catch (e) {
       console.error(e)
       throw e

@@ -313,6 +313,7 @@ export class SplashdbClientMogno {
           filter: state.q,
           limit: state.limit,
         })
+
         for (const item of results) {
           const key = `${collection}/${item._id}`
           await this.basicClient.del(db, key)
@@ -320,6 +321,8 @@ export class SplashdbClientMogno {
         }
       }
     }
+
+    console.log(`delete ${n} documents by deletes[n].q`)
     return { ok: 1, n }
   }
 
@@ -467,6 +470,7 @@ export class SplashdbClientMogno {
         }
       }
       results.push(doc)
+      // limit === 0 means no limit
       if (!option.sort && results.length >= limit && limit > 0) break
     }
 
@@ -490,6 +494,11 @@ export class SplashdbClientMogno {
             : sortReturnRight
         }
       })
+    }
+
+    // limit === 0 means no limit
+    if (limit === 0) {
+      return results.splice(skip) as T[]
     }
     return results.splice(skip, limit) as T[]
   }

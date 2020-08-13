@@ -6,6 +6,11 @@ import {
   MongoRawDocument,
   MongoDocument,
   MongoCommandOutput,
+  MongoCommandFindOutput,
+  MongoCommandUpdateOption,
+  MongoCommandUpdateOutput,
+  MongoCommandFindAndModifyOption,
+  MongoCommandFindAndModifyOutput,
   MongoCommandFindOption,
   MongoCommandInsertOption,
   MongoCommandInsertOutput,
@@ -18,7 +23,7 @@ import {
 import { PDClient } from './PDClient'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 
-function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {
+export function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {
   a = a.replace(/^(.{8})-(.{4})-(.{4})/, '$3-$2-$1')
   b = b.replace(/^(.{8})-(.{4})-(.{4})/, '$3-$2-$1')
   return a < b ? -1 : a > b ? 1 : 0
@@ -79,16 +84,41 @@ export class SplashdbClientMogno {
     return doc
   }
 
+  async runCommand<T>(
+    db: string,
+    option: MongoCommandFindOption<T>
+  ): Promise<MongoCommandFindOutput<T>>
+
+  async runCommand<T>(
+    db: string,
+    option: MongoCommandInsertOption<T>
+  ): Promise<MongoCommandInsertOutput>
+
+  async runCommand<T>(
+    db: string,
+    option: MongoCommandFindAndModifyOption<T>
+  ): Promise<MongoCommandFindAndModifyOutput<T>>
+
+  async runCommand<T>(
+    db: string,
+    option: MongoCommandDeleteOption
+  ): Promise<MongoCommandDeleteOutput>
+
+  async runCommand<T>(
+    db: string,
+    option: MongoCommandUpdateOption<T>
+  ): Promise<MongoCommandUpdateOutput<T>>
+
   async runCommand<T extends MongoRawDocument>(
     db: string,
     options: MongoCommandOption<T>
-  ): Promise<MongoCommandOutput<T>> {
+  ): Promise<MongoCommandOutput<T & { _id: string }>> {
     if ('find' in options) {
       const data = await this.find<T & { _id: string }>(db, options)
       return {
         _data: BSON.serialize(data),
         cursor: {
-          toArray: async (): Promise<T[]> => {
+          toArray: async (): Promise<(T & { _id: string })[]> => {
             return Promise.resolve(data)
           },
         },
@@ -99,39 +129,89 @@ export class SplashdbClientMogno {
       return await this.insert<T>(db, options)
     } else if ('delete' in options) {
       return await this.delete(db, options)
+    } else if ('update' in options && 'updates' in options) {
+      return await this.update(db, options)
+    } else if ('findAndModify' in options) {
+      return await this.findAndModify<T>(db, options)
     }
     throw new Error('Unknown command')
   }
 
-  async *tableIterator<T extends MongoDocument>(
+  async findAndModify<T extends MongoRawDocument>(
     db: string,
-    tableName: string,
+    option: MongoCommandFindAndModifyOption<T>
+  ): Promise<MongoCommandFindAndModifyOutput<T & { _id: string }>> {
+    const { findAndModify: collection, query, sort } = option
+    let value = {} as T & { _id: string }
+    // Although the query may match multiple documents,
+    // findAndModify will only select one document to modify.
+    const results = await this.find(db, {
+      find: collection,
+      filter: query,
+      sort,
+      limit: 1,
+    })
+    let shouldUpsert = false
+    if (option.update && option.upsert && results.length === 0) {
+      shouldUpsert = true
+    }
+    if (shouldUpsert) {
+      const update = option.update
+      const id = typeof update._id === 'string' ? update._id : uuidv1()
+      delete update._id
+      value = await this.insertById<T>(db, collection, id, update)
+    } else if (results.length === 1) {
+      const oldDoc = results[0] as T & { _id: string }
+      const { _id: id, ...doc } = oldDoc
+      const key = `${collection}/${id}`
+      if (option.remove) {
+        await this.basicClient.del(db, key)
+        value = oldDoc
+      } else {
+        const newdoc = {
+          ...doc,
+          ...option.update,
+        }
+        await this.basicClient.put(db, key, BSON.serialize(newdoc))
+        value = option.new ? { ...newdoc, _id: id } : oldDoc
+      }
+    }
+
+    return {
+      ok: 1,
+      value,
+    }
+  }
+
+  async *tableIterator<T extends MongoRawDocument>(
+    db: string,
+    collection: string,
     afterId?: string
-  ): AsyncIterableIterator<T> {
+  ): AsyncIterableIterator<T & { _id: string }> {
     const options = {
-      start: `${tableName}/${afterId || ''}`,
+      start: `${collection}/${afterId || ''}`,
     }
     for await (const entry of this.basicClient.iterator(db, options)) {
       const key = `${entry.key}`
       if (!key.startsWith(options.start)) break
       if (key === options.start) continue
-      const id = key.substr(`${tableName}/`.length)
+      const id = key.substr(`${collection}/`.length)
       const doc: MongoDocument = {
         _id: id,
       }
       Object.assign(doc, this.parseRawDocument(entry))
-      yield doc as T
+      yield doc as T & { _id: string }
     }
   }
 
-  async insertById<T extends MongoDocument>(
+  async insertById<T extends MongoRawDocument>(
     db: string,
-    tableName: string,
+    collection: string,
     id: string,
-    doc: Omit<T, '_id'>
-  ): Promise<T> {
-    const key = `${tableName}/${id}`
-    const doc2 = { _id: id, ...doc } as T
+    doc: T
+  ): Promise<T & { _id: string }> {
+    const key = `${collection}/${id}`
+    const doc2 = { _id: id, ...doc } as T & { _id: string }
     await this.basicClient.put(db, key, BSON.serialize(doc))
     return doc2
   }
@@ -158,10 +238,10 @@ export class SplashdbClientMogno {
 
   async getById<T extends MongoDocument>(
     db: string,
-    tableName: string,
+    collection: string,
     id: string
   ): Promise<T | void> {
-    const key = `${tableName}/${id}`
+    const key = `${collection}/${id}`
     const value = await this.basicClient.get(db, key)
     if (!value) return
 
@@ -173,24 +253,51 @@ export class SplashdbClientMogno {
     return doc as T
   }
 
-  async update<T extends MongoDocument>(
+  async update<T extends MongoRawDocument>(
     db: string,
-    tableName: string,
-    id: string,
-    doc: MongoRawDocument
-  ): Promise<T> {
-    const key = `${tableName}/${id}`
-    const value = await this.basicClient.get(db, key)
-    if (!value) throw new Error('Not found')
-    const rawdoc = this.parseRawDocument({ key, value: Buffer.from(value) })
-    Object.assign(rawdoc, cleanDocument(doc))
-    await this.basicClient.put(db, key, BSON.serialize(rawdoc))
-
-    const newdoc: MongoDocument = {
-      _id: id,
-      ...rawdoc,
+    option: MongoCommandUpdateOption<T>
+  ): Promise<MongoCommandUpdateOutput<T>> {
+    const { update: collection, updates } = option
+    let n = 0
+    const upserted: (T & { _id: string })[] = []
+    if (updates && updates.length > 0) {
+      for await (const state of updates) {
+        const { upsert = false, multi = false } = state
+        const results = await this.find(db, {
+          find: collection,
+          limit: multi ? 0 : 1,
+          filter: state.q,
+        })
+        let shouldUpsert = false
+        let shouldUpdate = false
+        if (results.length === 0) {
+          if (upsert) {
+            shouldUpdate = false
+            shouldUpsert = true
+          }
+        } else {
+          shouldUpsert = false
+          shouldUpdate = true
+        }
+        if (shouldUpdate) {
+          for (const item of results) {
+            const key = `${collection}/${item._id}`
+            delete state.u._id
+            const newdoc = Object.assign({}, item, cleanDocument(state.u))
+            await this.basicClient.put(db, key, BSON.serialize(newdoc))
+            n += 1
+          }
+        } else if (shouldUpsert) {
+          const id = typeof state.u._id === 'string' ? state.u._id : uuidv1()
+          const key = `${collection}/${id}`
+          const newdoc = cleanDocument(state.u)
+          await this.basicClient.put(db, key, BSON.serialize(newdoc))
+          upserted.push({ ...newdoc, _id: id })
+          n += 1
+        }
+      }
     }
-    return newdoc as T
+    return { ok: 1, n, upserted }
   }
 
   async delete(
@@ -345,6 +452,11 @@ export class SplashdbClientMogno {
   ): Promise<T[]> {
     const results: T[] = []
     const { find: collection, limit = 10, skip = 0 } = option
+    if (option.filter && typeof option.filter._id === 'string') {
+      const doc = await this.getById(db, collection, option.filter._id)
+      if (doc) return [doc] as T[]
+      return []
+    }
     for await (const doc of this.tableIterator<T>(db, collection)) {
       // if (option.$defaultFields) {
       //   Object.assign(doc, option.$defaultFields, { ...doc }, { ID: doc._id })

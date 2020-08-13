@@ -34,7 +34,7 @@ interface MongoArrayOperator {
 
 interface MongoEvaluation {
   // Evaluation Query Operators
-  $where?: <T extends MongoDocument>(doc: T) => boolean
+  $where?: <T extends MongoRawDocument & { _id?: string }>(doc: T) => boolean
   $regex?: RegExp
 }
 
@@ -142,6 +142,9 @@ interface MongoCommandFindAndModifyOption<T extends MongoRawDocument> {
   query?: MongoFilter
   skip?: number
   update: T
+  sort?: {
+    [x in keyof T]?: 1 | 0
+  }
   fields?: {
     [x in keyof T]?: 1 | 0
   }
@@ -186,20 +189,22 @@ export interface MongoCommandInsertOutput {
   ok: 0 | 1
 }
 
-export interface MongoCommandUpdateOutput {
+export interface MongoCommandUpdateOutput<T> {
   n: number
   ok: 0 | 1
+  upserted: (T & { _id: string })[]
 }
 
-export interface MongoCommandFindAndModifyOutput {
+export interface MongoCommandFindAndModifyOutput<T extends MongoRawDocument> {
   ok: 0 | 1
+  value: T & { _id: string }
 }
 
 export type MongoCommandOutput<T extends MongoRawDocument> =
   | MongoCommandFindOutput<T & { _id: string }>
   | MongoCommandDeleteOutput
-  | MongoCommandFindAndModifyOutput
-  | MongoCommandUpdateOutput
+  | MongoCommandFindAndModifyOutput<T>
+  | MongoCommandUpdateOutput<T>
   | MongoCommandInsertOutput
 
 // export const exampleOption: MongoCommandOption<{

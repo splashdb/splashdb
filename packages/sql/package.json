@@ -1,9 +1,9 @@
 {
   "name": "@splashdb/sql",
   "private": false,
-  "version": "0.6.3",
+  "version": "0.6.4",
   "scripts": {
-		"publish-ci": "npm publish",
+    "publish-ci": "npm publish",
     "test": "jest src",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"
   },

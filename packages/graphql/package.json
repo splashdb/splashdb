@@ -1,6 +1,6 @@
 {
 	"name": "@splashdb/graphql",
-	"version": "0.6.4",
+	"version": "0.6.9",
 	"private": false,
 	"description": "",
 	"main": "build/index.js",
@@ -21,6 +21,6 @@
 		"node-ts-scripts": "^0.12.14"
 	},
 	"dependencies": {
-		"@splashdb/shared": "^0.6.4"
+		"@splashdb/shared": "^0.6.9"
 	}
 }

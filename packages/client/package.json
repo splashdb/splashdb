@@ -1,7 +1,7 @@
 {
 	"name": "@splashdb/client",
 	"private": false,
-	"version": "0.6.6",
+	"version": "0.6.9",
 	"description": "Splashdb client for Node.js",
 	"main": "build/index.js",
 	"files": [
@@ -33,7 +33,7 @@
 	},
 	"dependencies": {
 		"@splashdb/mongo-types": "^0.6.4",
-		"@splashdb/shared": "^0.6.4",
+		"@splashdb/shared": "^0.6.9",
 		"bootbuffer": "^0.3.0",
 		"bson": "^4.0.4",
 		"varint": "^5.0.0"

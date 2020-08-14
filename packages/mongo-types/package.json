@@ -9,6 +9,7 @@
     "build/index.d.ts"
   ],
   "scripts": {
+		"publish-ci": "npm publish",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
     "test": "jest --detectOpenHandles"
   },

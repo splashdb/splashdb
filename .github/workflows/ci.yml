@@ -70,7 +70,8 @@ jobs:
         if: |
           github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
-          lerna publish --yes --canary --preid ci --npm-tag=ci --force-publish=*
+          npm config set access public
+          lerna run publish-ci
 
       - name: Publish Docker
         if: |

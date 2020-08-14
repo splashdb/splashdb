@@ -9,6 +9,7 @@
     "build/index.d.ts"
   ],
   "scripts": {
+		"publish-ci": "npm publish",
     "start": "node-ts-scripts run docker/index.ts --platform=node",
     "publish-docker": "sh publish-docker.sh",
     "build-docker": "node-ts-scripts bundle docker/index.ts --outputDir=docker --platform=node",

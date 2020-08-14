@@ -1,5 +1,6 @@
 {
 	"name": "@splashdb/client",
+  "private": false,
 	"version": "0.6.0",
 	"description": "Splashdb client for Node.js",
 	"main": "build/index.js",

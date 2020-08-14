@@ -1,6 +1,6 @@
 {
   "name": "@splashdb/sql",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "scripts": {
     "test": "jest src",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node"

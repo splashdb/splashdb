@@ -1,3 +1,3 @@
-export function main(): Promise<void> {
+export async function main(): Promise<void> {
   return
 }

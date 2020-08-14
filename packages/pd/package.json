@@ -1,6 +1,6 @@
 {
 	"name": "@splashdb/pd",
-	"version": "0.6.4",
+	"version": "0.6.7",
 	"private": false,
 	"description": "",
 	"main": "build/index.js",

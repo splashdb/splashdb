@@ -322,7 +322,6 @@ export class SplashdbClientMogno {
       }
     }
 
-    console.log(`delete ${n} documents by deletes[n].q`)
     return { ok: 1, n }
   }
 

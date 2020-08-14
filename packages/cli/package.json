@@ -1,6 +1,6 @@
 {
 	"name": "@splashdb/cli",
-	"version": "0.5.1",
+	"version": "0.6.0",
 	"main": "build/index.js",
 	"files": [
 		"build/index.js",
@@ -19,7 +19,7 @@
 	"license": "MIT",
 	"dependencies": {
 		"@splashdb/client": "0.0.3",
-		"@splashdb/shared": "^0.5.1",
+		"@splashdb/shared": "^0.6.0",
 		"rippledb": "^0.3.1",
 		"yargs": "^15.3.1"
 	},

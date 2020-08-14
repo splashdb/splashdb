@@ -1,16 +1,6 @@
-# node-level-sql
+# splashdb/sql
 
-## Roadmap
-
-- [ ] CREATE TABLE
-- [ ] SELECT
-- [ ] UPDATE
-- [ ] DELETE 
-- [ ] INSERT INTO 
-- [ ] ALTER TABLE
-- [ ] DROP TABLE
-
+**Experimental SQL-style cluster toolkit based on Splashdb Storage Cluster**
 
 ## Deps
-* [node-level](https://github.com/heineiuo/node-level)
 * [node-sql-parser](https://github.com/taozhi8833998/node-sql-parser)

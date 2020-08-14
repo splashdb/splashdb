@@ -15,15 +15,15 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/splashdb/splash.git"
+		"url": "git+https://github.com/splashdb/splashdb.git"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/splashdb/splash/issues"
+		"url": "https://github.com/splashdb/splashdb/issues"
 	},
-	"homepage": "https://github.com/splashdb/splash#readme",
+	"homepage": "https://github.com/splashdb/splashdb#readme",
 	"devDependencies": {
 		"@types/bson": "^4.0.2",
 		"@types/jest": "^26.0.9",

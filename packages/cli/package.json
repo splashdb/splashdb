@@ -16,7 +16,7 @@
 		"splash": "./bin/splash",
 		"splashdb": "./bin/splash"
 	},
-	"repository": "https://github.com/splashdb/cli",
+	"repository": "https://github.com/splashdb/splashdb",
 	"author": "heineiuo <heineiuo@gmail.com>",
 	"license": "MIT",
 	"dependencies": {

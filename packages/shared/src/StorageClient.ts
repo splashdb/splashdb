@@ -149,7 +149,6 @@ export class SplashdbStorageClient {
     let ended = false
 
     /**
-     * ISSUE #2 https://github.com/splashdb/client/issues/2
      * ServerHttp2Stream buffer the write data, so client
      * sometime will not receive a complete BootBuffer
      * format stream response. Client should cache stream data.

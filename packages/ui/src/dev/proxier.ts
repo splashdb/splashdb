@@ -21,7 +21,7 @@ function cors(req: http.IncomingMessage, res: http.ServerResponse): void {
   )
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, POST')
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*')
-  res.setHeader('Cache-Control', 'max-age=3600000')
+  res.setHeader('Cache-Control', 'max-age=3600')
 }
 
 const server = http.createServer()

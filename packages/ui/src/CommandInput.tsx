@@ -1,5 +1,4 @@
 import React from 'react'
-import { SpalashDBUIFetcher, devFetcher } from './fetcher'
 import AceEditor from 'react-ace'
 import ace from 'ace-builds'
 import 'ace-builds/src-noconflict/mode-json'
@@ -11,25 +10,41 @@ ace.config.set(
   'https://cdn.jsdelivr.net/npm/ace-builds@1.4.3/src-noconflict/'
 )
 
-export function CommandInput(props: { fetcher: SpalashDBUIFetcher }) {
-  const [code, setCode] = React.useState('{}')
+export function CommandInput(props: {
+  width: number
+  height: number
+  loading?: boolean
+  error?: Error | null
+  value: string
+  onChange: (command: string) => void
+}): React.ReactElement {
+  const { value, onChange, width, height, loading } = props
+
   return (
-    <div>
+    <div
+      style={{
+        border: '1px solid #e0e0e0',
+        boxSizing: 'border-box',
+        width,
+        height,
+        overflow: 'hidden',
+      }}
+    >
       <AceEditor
-        width={`${window.innerWidth - 40}px`}
-        height={`${window.innerHeight / 4}px`}
+        width={`${width}px`}
+        height={`${height}px`}
         mode="json"
         theme="github"
-        onChange={setCode}
-        showGutter={false}
+        onChange={onChange}
+        showGutter={true}
         name="UNIQUE_ID_OF_DIV"
-        value={code}
+        value={value}
         editorProps={{ $blockScrolling: true }}
         setOptions={{
           enableBasicAutocompletion: true,
           enableLiveAutocompletion: true,
           enableSnippets: true,
-          showLineNumbers: false,
+          showLineNumbers: true,
           tabSize: 2,
         }}
       />

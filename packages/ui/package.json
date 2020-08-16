@@ -28,10 +28,14 @@
     "node-ts-scripts": "^0.12.14",
     "react": "^16.13.1",
     "react-ace": "^9.1.3",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "react-feather": "^2.0.8",
+    "react-resizable": "^1.10.1"
   },
   "importmap": {
     "imports": {
+      "react": "https://cdn.jsdelivr.net/npm/react@16.13.1/umd/react.development.js",
+      "react-dom": "https://cdn.jsdelivr.net/npm/react-dom@16.13.1/umd/react-dom.development.js",
       "vs/": "https://cdn.jsdelivr.net/npm/monaco-editor@0.20.0/dev/vs/",
       "esm/vs/": "https://cdn.jsdelivr.net/npm/monaco-editor@0.20.0/esm/vs/"
     }
@@ -47,6 +51,5 @@
     "https://cdn.jsdelivr.net/npm/systemjs@6.4.0/dist/extras/transform.js",
     "https://cdn.jsdelivr.net/npm/systemjs@6.4.0/dist/extras/named-exports.js",
     "https://cdn.jsdelivr.net/npm/systemjs@6.4.0/dist/extras/named-register.js"
-  ],
-  "dependencies": {}
+  ]
 }

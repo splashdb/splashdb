@@ -4,7 +4,6 @@
     "es6": true
   },
   "extends": [
-    "react-app",
     "plugin:@typescript-eslint/recommended",
     "prettier",
     "plugin:prettier/recommended",

@@ -29,6 +29,17 @@ export function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {
   return a < b ? -1 : a > b ? 1 : 0
 }
 
+function stringToRegExp(str: string): RegExp {
+  let str2 = str
+  while (str2.startsWith('/')) {
+    str2 = str2.substr(1)
+  }
+  while (str2.endsWith('/')) {
+    str2 = str2.substr(0, str2.length - 1)
+  }
+  return new RegExp(str2)
+}
+
 export function cleanDocument<T extends { [x: string]: unknown }>(obj: T): T {
   const propNames = Object.getOwnPropertyNames(obj)
   for (let i = 0; i < propNames.length; i++) {
@@ -141,39 +152,57 @@ export class SplashdbClientMogno {
     db: string,
     option: MongoCommandFindAndModifyOption<T>
   ): Promise<MongoCommandFindAndModifyOutput<T & { _id: string }>> {
-    const { findAndModify: collection, query, sort } = option
+    const {
+      findAndModify: collection,
+      query,
+      update,
+      sort,
+      new: optionNew = false,
+      upsert = false,
+      remove = false,
+    } = option
     let value = {} as T & { _id: string }
     // Although the query may match multiple documents,
     // findAndModify will only select one document to modify.
-    const results = await this.find(db, {
-      find: collection,
-      filter: query,
-      sort,
-      limit: 1,
-    })
+    const results = !query
+      ? []
+      : await this.find(db, {
+          find: collection,
+          filter: query,
+          sort,
+          limit: 1,
+        })
+    const result = results[0]
     let shouldUpsert = false
-    if (option.update && option.upsert && results.length === 0) {
-      shouldUpsert = true
+    let shouldRemove = false
+    let shouldUpdate = false
+    if (!result) {
+      if (upsert) shouldUpsert = true
+    } else {
+      if (remove) {
+        shouldRemove = true
+      } else {
+        shouldUpdate = true
+      }
     }
     if (shouldUpsert) {
-      const update = option.update
       const id = typeof update._id === 'string' ? update._id : uuidv1()
       delete update._id
       value = await this.insertById<T>(db, collection, id, update)
-    } else if (results.length === 1) {
-      const oldDoc = results[0] as T & { _id: string }
+    } else {
+      const oldDoc = result as T & { _id: string }
       const { _id: id, ...doc } = oldDoc
       const key = `${collection}/${id}`
-      if (option.remove) {
+      if (shouldRemove) {
         await this.basicClient.del(db, key)
         value = oldDoc
-      } else {
+      } else if (shouldUpdate) {
         const newdoc = {
           ...doc,
           ...option.update,
         }
         await this.basicClient.put(db, key, BSON.serialize(newdoc))
-        value = option.new ? { ...newdoc, _id: id } : oldDoc
+        value = optionNew ? { ...newdoc, _id: id } : oldDoc
       }
     }
 
@@ -394,12 +423,13 @@ export class SplashdbClientMogno {
         throw new Error('Invalid value for $where')
       }
       return operator.$where(doc)
-    } else if ('$regex' in operator) {
-      if (!(operator.$regex instanceof RegExp)) {
-        throw new Error('Invalid value for $regex')
+    } else if (operator['$regex']) {
+      let regex = operator.$regex as RegExp
+      if (typeof operator.$regex === 'string') {
+        regex = stringToRegExp(operator.$regex)
       }
       if (typeof fieldValue === 'string') {
-        return operator.$regex.test(fieldValue)
+        return regex.test(fieldValue)
       }
       return false
     } else if ('$size' in operator) {

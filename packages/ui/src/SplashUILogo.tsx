@@ -9,13 +9,16 @@ export function SplashUILogo(): React.ReactElement {
         userSelect: 'none',
         height: 40,
         lineHeight: '40px',
-        fontFamily: 'fantasy',
-        fontWeight: 500,
+        fontFamily: 'sans-serif',
+        fontStyle: 'italic',
+        fontWeight: 800,
         width: 100,
+        // letterSpacing: 1,
         textAlign: 'center',
       }}
     >
-      SplashUI
+      Splash
+      <span style={{ fontWeight: 200 }}>UI</span>
     </div>
   )
 }

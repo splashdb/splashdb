@@ -135,10 +135,10 @@ interface MongoCommandFindOption<T extends MongoRawDocument> {
  */
 interface MongoCommandFindAndModifyOption<T extends MongoRawDocument> {
   findAndModify: MongoCollectionName
-  remove: boolean
-  upsert: boolean
+  remove?: boolean // default false
+  upsert?: boolean // default false
   // new: When true, returns the modified document rather than the original. The findAndModify method ignores the new option for remove operations. The default is false.
-  new: boolean
+  new?: boolean // default false
   query?: MongoFilter
   skip?: number
   update: T

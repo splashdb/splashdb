@@ -1,12 +1,33 @@
 import React from 'react'
 import { SplashUIColumn } from './calculateColumns'
 
+const defaultChildren = (
+  <pre
+    style={{
+      backgroundColor: '#f2f2f2',
+      display: 'inline-block',
+      borderRadius: 4,
+      fontStyle: 'italic',
+      paddingLeft: 4,
+      margin: 0,
+      paddingRight: 4,
+    }}
+  >
+    &lt;empty&gt;
+  </pre>
+)
+
 function TableCell(props: {
   as?: 'th' | 'td'
   style?: any
-  children: any
+  children?: any
 }): React.ReactElement {
-  const { as: Component = 'td', style, ...restProps } = props
+  const {
+    as: Component = 'td',
+    style,
+    children = defaultChildren,
+    ...restProps
+  } = props
 
   const cellStyle = {
     borderWidth: 1,
@@ -23,7 +44,9 @@ function TableCell(props: {
         ...style,
       }}
       {...restProps}
-    ></Component>
+    >
+      {children}
+    </Component>
   )
 }
 
@@ -70,7 +93,7 @@ export function DataTable(props: {
                 {columns.map((column) => {
                   const { key, type } = column
                   const cellData = record[key]
-                  if (!cellData) return <td key={key}></td>
+                  if (!cellData) return <TableCell key={key}></TableCell>
                   if (type === 'object' || type === 'array') {
                     return (
                       <TableCell key={key}>

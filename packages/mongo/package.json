@@ -1,7 +1,7 @@
 {
 	"name": "@splashdb/mongo",
 	"private": false,
-	"version": "0.6.9",
+	"version": "0.6.10",
 	"description": "",
 	"main": "build/index.js",
 	"files": [
@@ -33,7 +33,7 @@
 		"node-ts-scripts": "^0.12.14"
 	},
 	"dependencies": {
-		"@splashdb/mongo-types": "^0.6.4",
+		"@splashdb/mongo-types": "^0.6.10",
 		"@splashdb/shared": "^0.6.9",
 		"bootbuffer": "^0.3.0",
 		"bson": "^4.0.4",

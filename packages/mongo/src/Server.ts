@@ -14,6 +14,7 @@ export class SplashDBMongoServer {
     }
     this.client = new SplashdbClientMogno(options)
     this.authManager = new AuthManager(this.options, this.client)
+    console.log('[server] Splashdb starting...')
     this.start()
   }
 

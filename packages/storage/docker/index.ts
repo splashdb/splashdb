@@ -3,28 +3,26 @@ import path from 'path'
 import { SplashDBServer, SplashDBServerOptions } from '../src'
 
 export async function main(): Promise<void> {
-  const secure = process.env.SPLASHDB_SECURE === 'true'
-  const debug = process.env.DEBUG === 'true'
-  const port = parseInt(process.env.SPLASHDB_PORT || '8080')
-  const secureKeyFile =
-    process.env.SPLASHDB_SECURE_KEY || '/run/secrets/splashdb-privkey.pem'
-  const secureCertFile =
-    process.env.SPLASHDB_SECURE_CERT || '/run/secrets/splashdb-cert.pem'
+  const {
+    DEBUG = 'false',
+    SPLASHDB_SECURE = 'false',
+    SPLASHDB_PORT = '8080',
+    SPLASHDB_SECURE_KEY = '/run/secrets/splashdb-privkey.pem',
+    SPLASHDB_SECURE_CERT = '/run/secrets/splashdb-cert.pem',
+    SPLASHDB_DBPATH = '/data/db',
+  } = process.env
 
   const options: SplashDBServerOptions = {
-    debug,
-    secure,
-    dbpath: process.env.SPLASHDB_DBPATH
-      ? path.resolve(process.cwd(), process.env.SPLASHDB_DBPATH)
-      : '/data/db',
-    port,
+    debug: DEBUG === 'true',
+    secure: SPLASHDB_SECURE === 'true',
+    dbpath: path.resolve(process.cwd(), SPLASHDB_DBPATH),
+    port: parseInt(SPLASHDB_PORT || '8080'),
   }
   if (options.secure) {
-    options.secureKey = await fs.promises.readFile(secureKeyFile)
-    options.secureCert = await fs.promises.readFile(secureCertFile)
+    options.secureKey = await fs.promises.readFile(SPLASHDB_SECURE_KEY)
+    options.secureCert = await fs.promises.readFile(SPLASHDB_SECURE_CERT)
   }
 
-  console.log('[server] Splashdb starting...')
   new SplashDBServer(options)
 }
 

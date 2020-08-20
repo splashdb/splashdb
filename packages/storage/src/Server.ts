@@ -18,6 +18,7 @@ export class SplashDBServer {
       ...options,
     }
     this.dbManager = new DBManager(this.options)
+    console.log('[server] Splashdb starting...')
     this.start()
   }
 

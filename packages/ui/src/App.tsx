@@ -20,7 +20,7 @@ export function App(props: {
   const [data, setData] = React.useState<any[]>([])
   const [columns, setColumns] = React.useState<any[]>([])
   const [code, setCode] = React.useState(
-    localStorage['SplashUILatestCommand'] || '{}'
+    localStorage.SPLASHDB_LATEST_COMMAND || '{}'
   )
   const [loading, setLoading] = React.useState(false)
   const [inputWidth, setInputWidth] = React.useState(width / 2)
@@ -95,7 +95,7 @@ export function App(props: {
 
   const handleClickCommand = React.useCallback(() => {
     handleRunCommand(code)
-    localStorage['SplashUILatestCommand'] = code
+    localStorage.SPLASHDB_LATEST_COMMAND = code
   }, [handleRunCommand, code])
 
   React.useEffect(() => {

@@ -29,12 +29,23 @@ function TableCell(props: {
     ...restProps
   } = props
 
+  const childrenWidth = React.useMemo(() => {
+    if (typeof children === 'string') {
+      if (children.length > 100) return 300
+    }
+    return undefined
+  }, [children])
+
   const cellStyle = {
     borderWidth: 1,
     borderStyle: 'solid',
     borderColor: '#ddd',
     padding: 4,
     textAlign: 'left',
+    whiteSpace: 'nowrap',
+    maxWidth: childrenWidth,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     fontFamily: 'monospace',
   }
   return (
@@ -63,15 +74,13 @@ export function DataTable(props: {
       style={{
         width,
         height,
+        overflowX: 'auto',
         backgroundColor: '#fcfcfc',
       }}
     >
       <table
         style={{
           borderCollapse: 'collapse',
-          overflowX: 'auto',
-          whiteSpace: 'nowrap',
-          width: '100%',
         }}
       >
         <thead>

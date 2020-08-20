@@ -7,7 +7,7 @@ function getHeaders(req: http.IncomingMessage): http2.OutgoingHttpHeaders {
   newHeaders[':method'] = req.method
   newHeaders['Authorization'] = req.headers.authorization
   for (const key in req.headers) {
-    if (key.startsWith('x-splashdb')) {
+    if (key.startsWith('x-splashdb') && !key.startsWith('x-splashdb-dev')) {
       newHeaders[key] = req.headers[key]
     }
   }
@@ -17,7 +17,7 @@ function getHeaders(req: http.IncomingMessage): http2.OutgoingHttpHeaders {
 function cors(req: http.IncomingMessage, res: http.ServerResponse): void {
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization, ININ-Client-Path, x-splashdb-db, x-splashdb-protocol, x-splashdb-version'
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization, ININ-Client-Path, x-splashdb-db, x-splashdb-protocol, x-splashdb-version, x-splashdb-dev-authority'
   )
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, POST')
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*')
@@ -26,8 +26,9 @@ function cors(req: http.IncomingMessage, res: http.ServerResponse): void {
 
 const server = http.createServer()
 
-const sessionDaemon = new Http2SessionDaemon({
-  getAuthority: () => Promise.resolve('http://127.0.0.1:8543/'),
+let sessionAuthority = 'http://127.0.0.1:8543/'
+let sessionDaemon = new Http2SessionDaemon({
+  getAuthority: () => Promise.resolve(sessionAuthority),
   getOptions: () => Promise.resolve({}),
 })
 
@@ -38,6 +39,17 @@ server.on(
     if (req.method === 'OPTIONS') {
       res.end()
       return
+    }
+    const authority = req.headers['x-splashdb-dev-authority'] as string
+    if (authority && authority !== sessionAuthority) {
+      console.log(`switch to ${authority}`)
+      await sessionDaemon.destroy()
+      console.log('session daemon destroied')
+      sessionAuthority = authority
+      sessionDaemon = new Http2SessionDaemon({
+        getAuthority: () => Promise.resolve(sessionAuthority),
+        getOptions: () => Promise.resolve({}),
+      })
     }
 
     const session = await sessionDaemon.getSession()

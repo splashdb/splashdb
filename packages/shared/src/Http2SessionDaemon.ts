@@ -152,6 +152,12 @@ export class Http2SessionDaemon {
           resolve()
         }
       })
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          resolve()
+        }
+      }, 1000)
     })
   }
 }

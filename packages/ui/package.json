@@ -11,8 +11,6 @@
   "scripts": {
     "proxier": "node-ts-scripts run src/dev/proxier.ts --platform=node",
     "start": "node-ts-scripts run src/dev/index.tsx --platform=browser",
-    "publish-docker": "sh publish-docker.sh",
-    "build-docker": "node-ts-scripts bundle docker/index.ts --outputDir=docker --platform=node",
     "build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
     "test": "jest --detectOpenHandles"
   },

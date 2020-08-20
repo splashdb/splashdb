@@ -7,6 +7,7 @@ import { SpalashDBUIFetcher, devFetcher } from './fetcher'
 import { calculateColumns } from './calculateColumns'
 import { Button } from './Button'
 import { SplashUILogo } from './SplashUILogo'
+import JSON5 from 'json5'
 
 export function App(props: {
   width?: number
@@ -82,9 +83,10 @@ export function App(props: {
   const handleRunCommand = React.useCallback(
     (command: string) => {
       try {
-        const commandOption = JSON.parse(command)
+        const commandOption = JSON5.parse(command)
         runCommandAndUpdate(commandOption)
       } catch (e) {
+        console.error(e)
         setError(e)
       }
     },

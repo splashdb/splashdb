@@ -1,7 +1,7 @@
 import React from 'react'
 import AceEditor from 'react-ace'
 import ace from 'ace-builds'
-import 'ace-builds/src-noconflict/mode-json'
+import 'ace-builds/src-noconflict/mode-json5'
 import 'ace-builds/src-noconflict/theme-github'
 import 'ace-builds/src-noconflict/ext-language_tools'
 
@@ -33,7 +33,7 @@ export function CommandInput(props: {
       <AceEditor
         width={`${width}px`}
         height={`${height}px`}
-        mode="json"
+        mode="json5"
         theme="github"
         onChange={onChange}
         showGutter={true}

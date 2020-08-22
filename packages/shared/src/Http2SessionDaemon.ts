@@ -66,7 +66,9 @@ export class Http2SessionDaemon {
       // Only listen connection fail
       const errListener = (err: Error): void => {
         if (!handled) {
-          this.session.removeListener('connect', connectListener)
+          if (this.session) {
+            this.session.removeListener('connect', connectListener)
+          }
           handled = true
           this.connected = false
           delete this.connectingPromise

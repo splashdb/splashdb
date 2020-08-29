@@ -158,9 +158,6 @@ export class SplashdbClient {
     if (!result) return { ok: 0, n: 0 }
     if (result.length < 5) return { ok: 0, n: 0 }
     const parsed = BSON.deserialize(result)
-    if (this.options.debug) {
-      console.log(parsed)
-    }
     if ('find' in option) {
       return {
         n: parsed.n,

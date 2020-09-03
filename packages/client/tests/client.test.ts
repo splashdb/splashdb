@@ -42,6 +42,7 @@ describe('Call methods', () => {
         filter: {},
       })
       const findOutputData = await findOutput.cursor.toArray()
+      console.log(findOutputData)
       expect(findOutputData[0].username).toBe('example')
 
       const updateOutput = await client.runCommand({

@@ -30,6 +30,8 @@ export class Http2StreamIterator {
   iteratorInstance!: AsyncIterable<Http2StreamIteratorResult>
 
   onEnd(): void {
+    console.log('enEnd')
+
     this.ended = true
     this.stream.off('data', this.onData)
     this.stream.off('end', this.onEnd)
@@ -40,6 +42,7 @@ export class Http2StreamIterator {
   }
 
   onData(chunk: string | Buffer): void {
+    console.log(chunk)
     const value = {
       chunk,
     }

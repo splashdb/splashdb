@@ -75,28 +75,32 @@ export class SplashDBServer {
     flags: number
   ): Promise<void> {
     try {
-      const method = headers['x-splashdb-method']
+      const dbmethod = headers['x-splashdb-method']
       const dbname = headers['x-splashdb-db']
+      console.log(`time=${Date.now()} dbmethod=${dbmethod} dbname=${dbname}`)
 
       if (headers[':method'] === 'GET') {
+        console.log('GET is not allowed')
         stream.respond({ ':status': 200 })
-        // console.log(`time=${Date.now()} renderHtml=true`)
         return
       }
-      // console.log(`time=${Date.now()} method=${method} dbname=${dbname}`)
 
-      if (typeof method !== 'string' || typeof dbname !== 'string') {
+      if (typeof dbmethod !== 'string' || typeof dbname !== 'string') {
+        console.log('dbmethod and dbname is required')
         stream.respond({ ':status': 400 })
         return
       }
 
-      const db = this.dbManager.getDB(dbname)
       const body = await readBody(stream)
+      const db = this.dbManager.getDB(dbname)
       const params = body.length >= 5 ? BSON.deserialize(Buffer.from(body)) : {}
-      switch (method) {
+      console.log('params', params)
+      switch (dbmethod) {
         case 'iterator':
           let iteratorStreamWrite = false
+          console.log('iterator start')
           for await (const result of db.iterator(params)) {
+            console.log(result)
             try {
               const resultBuf = BSON.serialize(result)
               stream.write(Buffer.from(varint.encode(resultBuf.length)))
@@ -129,13 +133,17 @@ export class SplashDBServer {
           stream.write(Buffer.alloc(0))
           break
         default:
+          stream.write(Buffer.alloc(0))
           if (this.options.debug) {
-            console.log(`[server] unknown method ${method}, payload: `, params)
+            console.log(
+              `[server] unknown dbmethod ${dbmethod}, payload: `,
+              params
+            )
           }
           break
       }
     } catch (e) {
-      console.log(e.message)
+      console.log('error', e.message)
     } finally {
       stream.end()
       stream.close()

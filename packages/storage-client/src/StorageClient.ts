@@ -59,6 +59,7 @@ export class SplashdbStorageClient {
 
     try {
       for await (const data of new Http2ResponseIterator(req).iterator()) {
+        console.log('chunk', data)
         const chunk =
           typeof data.chunk === 'string' ? Buffer.from(data.chunk) : data.chunk
         cache.push(chunk)

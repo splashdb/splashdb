@@ -1,5 +1,9 @@
 import * as http2 from 'http2'
-import { Http2ServerIterator, Http2StreamIterator } from '@splashdb/shared'
+import {
+  Http2ServerIterator,
+  Http2StreamIterator,
+  readBody,
+} from '@splashdb/shared'
 import BSON from 'bson'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 import { AuthManager } from './AuthManager'
@@ -62,31 +66,27 @@ export class SplashDBMongoServer {
     headers: http2.IncomingHttpHeaders,
     flags: number
   ): Promise<void> {
-    const caches: Buffer[] = []
-    for await (const data of new Http2StreamIterator(stream).iterator()) {
-      if (typeof data.chunk === 'string') {
-        caches.push(Buffer.from(data.chunk))
-      } else {
-        caches.push(data.chunk)
-      }
-    }
-    const requestBody = Buffer.concat(caches)
-
     try {
-      const params = BSON.deserialize(requestBody)
+      const body = await readBody(stream)
+      const params = BSON.deserialize(Buffer.from(body))
+      console.log('params', params)
       const authorization = headers.authorization as string
       const dbname = headers['x-splashdb-db'] as string
 
       if (!(await this.authManager.can(authorization, params, dbname))) {
+        console.log('permission', false)
+
         stream.respond({
           ':status': 403,
         })
         stream.end('Forbidden')
         return
       }
+      console.log('permission', true)
 
       try {
         const result = await this.client.runCommand(dbname, params)
+        console.log('result', result)
         stream.write(BSON.serialize(result))
       } catch (e) {
         stream.write(BSON.serialize({ ok: 0 }))

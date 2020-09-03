@@ -1,7 +1,7 @@
 {
   "name": "@splashdb/storage",
   "private": false,
-  "version": "0.6.17",
+  "version": "0.6.18",
   "description": "",
   "main": "build/index.js",
   "files": [
@@ -20,7 +20,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@splashdb/shared": "^0.6.17",
+    "@splashdb/shared": "^0.6.18",
     "bootbuffer": "^0.3.0",
     "bson": "^4.1.0",
     "rippledb": "^1.0.0",

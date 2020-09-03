@@ -1,4 +1,5 @@
-import { SplashdbStorageClient, Http2SessionDaemon } from '@splashdb/shared'
+import { Http2SessionDaemon } from '@splashdb/shared'
+import { SplashdbStorageClient } from '@splashdb/storage-client'
 import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 import BSON from 'bson'

@@ -34,7 +34,6 @@
 	"dependencies": {
 		"@splashdb/mongo-types": "^0.6.10",
 		"@splashdb/shared": "^0.6.12",
-		"bootbuffer": "^0.3.0",
 		"bson": "^4.0.4",
 		"varint": "^5.0.0"
 	}

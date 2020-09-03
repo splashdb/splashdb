@@ -4,7 +4,6 @@ import BSON from 'bson'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 import { AuthManager } from './AuthManager'
 import { SplashdbClientMogno } from './SplashDBMongoClient'
-import { MongoCommandOption } from '@splashdb/mongo-types'
 
 export class SplashDBMongoServer {
   constructor(options: SplashDBMongoOptions) {
@@ -74,7 +73,7 @@ export class SplashDBMongoServer {
     const requestBody = Buffer.concat(caches)
 
     try {
-      const params = BSON.deserialize(requestBody) as MongoCommandOption<{}>
+      const params = BSON.deserialize(requestBody)
       const authorization = headers.authorization as string
       const dbname = headers['x-splashdb-db'] as string
 
@@ -95,6 +94,7 @@ export class SplashDBMongoServer {
         stream.end()
       }
     } catch (e) {
+      console.log(e.message)
       stream.respond({
         ':status': 500,
       })

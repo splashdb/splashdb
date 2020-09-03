@@ -1,11 +1,19 @@
-import { BootBuffer } from 'bootbuffer'
+import BSON from 'bson'
 import varint from 'varint'
-import { Http2SessionDaemon } from './Http2SessionDaemon'
-import { Http2ResponseIterator } from './Http2ResponseIterator'
+import { Http2SessionDaemon, Http2ResponseIterator } from '@splashdb/shared'
 
 type SplashDBIteratorResult = {
   key: Buffer
   value: Buffer
+}
+
+type IteratorQueue = {
+  resolve: (
+    result:
+      | IteratorYieldResult<SplashDBIteratorResult>
+      | IteratorReturnResult<any>
+  ) => void
+  reject: (reason?: any) => void
 }
 
 export type SplashdbStorageClientOptions = {
@@ -80,22 +88,11 @@ export class SplashdbStorageClient {
     }
   }
 
-  buildPayload(params: {
-    [x: string]: Buffer | Uint8Array | string | number | boolean | void
-  }): Buffer {
-    const bb = new BootBuffer()
-    for (const key in params) {
-      bb.add(key, params[key])
-    }
-
-    return bb.buffer
-  }
-
   async get(db: string, key: string | Buffer): Promise<Uint8Array | void> {
     const result = await this.request(
       db,
       'get',
-      this.buildPayload({
+      BSON.serialize({
         key,
       })
     )
@@ -110,7 +107,7 @@ export class SplashdbStorageClient {
     await this.request(
       db,
       'put',
-      this.buildPayload({
+      BSON.serialize({
         key,
         value,
       })
@@ -122,7 +119,7 @@ export class SplashdbStorageClient {
     await this.request(
       db,
       'del',
-      this.buildPayload({
+      BSON.serialize({
         key,
       })
     )
@@ -133,25 +130,58 @@ export class SplashdbStorageClient {
     db: string,
     iteratorOption: { start?: string | Buffer; reverse?: boolean } = {}
   ): AsyncIterableIterator<SplashDBIteratorResult> {
-    // const debug = this.options.debug
     if (this.sessionDaemon.session.connecting) {
       await this.sessionDaemon.ok()
     }
     const cache: (SplashDBIteratorResult | Error)[] = []
-    const queue: {
-      resolve: (
-        result:
-          | IteratorYieldResult<SplashDBIteratorResult>
-          | IteratorReturnResult<any>
-      ) => void
-      reject: (reason?: any) => void
-    }[] = []
+    const queue: IteratorQueue[] = []
+
     let ended = false
+
+    const stopIterator = (e: Error) => {
+      if (isBrokenError(e)) {
+        this.sessionDaemon.session.close()
+      }
+
+      if (this.options.debug) {
+        console.log(
+          `[splash client] read response failed, stop iterator`,
+          e.message
+        )
+      }
+      // stop request with error
+      ended = true
+      req.end()
+      const promise = queue.shift()
+      if (promise) {
+        promise.reject(e)
+      } else {
+        cache.push(e)
+      }
+      return
+    }
 
     /**
      * ServerHttp2Stream buffer the write data, so client
-     * sometime will not receive a complete BootBuffer
+     * sometime will not receive a complete data
      * format stream response. Client should cache stream data.
+     *
+     * 1. put new buffer at end of cachedBuffer
+     *
+     * 2. try to read varint value:
+     * if varint value read success, then we can known nextData length,
+     * else if faild, wait for next buffer
+     *
+     * 3. calcurate endPosition by varint value
+     * if nextData endPosition is smaller then current cachedBuffer size
+     *   try to read nextData
+     * else if nextData endPosition is bigger, then wait for next buffer
+     *
+     * 3. read data:
+     * if read failed, stop iterator.
+     * else if `endPosition` > `cachedBufferSize`, data has not ready,
+     * update `cachedBuffer` and wait for next buffer
+     *
      */
     let cachedBuffer = Buffer.alloc(0)
 
@@ -167,64 +197,56 @@ export class SplashdbStorageClient {
       // and after read, shift the part have read
       let cachedBufferReadSize = 0
       while (true) {
-        if (cachedBufferReadSize >= cachedBufferSize) {
+        if (cachedBufferReadSize > cachedBufferSize) {
+          stopIterator(
+            new Error(
+              'Assert failed: readSize could not bigger then bufferSize'
+            )
+          )
+          break
+        }
+        if (cachedBufferReadSize === cachedBufferSize) {
           cachedBuffer = Buffer.alloc(0)
           break
         }
-        let bbSize = 0
+        let nextDataSize = 0
         try {
-          bbSize = varint.decode(cachedBuffer, cachedBufferReadSize)
+          nextDataSize = varint.decode(cachedBuffer, cachedBufferReadSize)
         } catch (e) {
-          // varint broken because uncomplete response
-          // handle at next time
+          // only keep unread buffer
           cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
           break
         }
-        const endPosition = cachedBufferReadSize + bbSize + varint.decode.bytes
-        if (endPosition > cachedBufferSize) {
-          // uncomplete response
-          // handle at next time
-          cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
-          break
-        }
-        cachedBufferReadSize += varint.decode.bytes
-        const bbBuf = cachedBuffer.slice(cachedBufferReadSize, endPosition)
-        cachedBufferReadSize += bbSize
 
-        const result = {} as SplashDBIteratorResult
+        const endPosition =
+          cachedBufferReadSize + varint.decode.bytes + nextDataSize
+
+        if (endPosition > cachedBufferSize) {
+          // only keep unread buffer
+          cachedBuffer = cachedBuffer.slice(cachedBufferReadSize)
+          break
+        }
+
+        cachedBufferReadSize += varint.decode.bytes
+        const nextDataBuffer = cachedBuffer.slice(
+          cachedBufferReadSize,
+          endPosition
+        )
+        cachedBufferReadSize += nextDataSize
+
         try {
-          for (const entry of BootBuffer.readSync(bbBuf)) {
-            if (entry.key === 'key') {
-              result.key = entry.value as Buffer
-            } else if (entry.key === 'value') {
-              result.value = entry.value as Buffer
-            }
-          }
-        } catch (e) {
-          if (this.options.debug) {
-            console.log(
-              `[splash client] bbbuffer read failed, so result may be empty`,
-              e.message
-            )
-          }
-          // stop request with error
-          ended = true
-          req.end()
+          const result: SplashDBIteratorResult = BSON.deserialize(
+            nextDataBuffer
+          )
           const promise = queue.shift()
           if (promise) {
-            promise.reject(e)
+            promise.resolve({ value: result, done: false })
           } else {
-            cache.push(e)
+            cache.push(result)
           }
-          return
-        }
-
-        // read success
-        const promise = queue.shift()
-        if (promise) {
-          promise.resolve({ value: result, done: false })
-        } else {
-          cache.push(result)
+        } catch (e) {
+          stopIterator(e)
+          break
         }
       }
     }
@@ -241,15 +263,7 @@ export class SplashdbStorageClient {
       const status = headers[':status']
       if (status !== 200) {
         const error = new Error(`HTTP_ERROR_${headers[':status']}`)
-
-        ended = true
-        req.end()
-        const promise = queue.shift()
-        if (promise) {
-          promise.reject(error)
-        } else {
-          cache.push(error)
-        }
+        stopIterator(error)
       }
     })
 
@@ -259,17 +273,7 @@ export class SplashdbStorageClient {
     })
 
     req.once('error', (e) => {
-      if (isBrokenError(e)) {
-        this.sessionDaemon.session.close()
-      }
-      ended = true
-      req.end()
-      const promise = queue.shift()
-      if (promise) {
-        promise.reject(e)
-      } else {
-        cache.push(e)
-      }
+      stopIterator(e)
     })
 
     req.once('end', () => {
@@ -281,8 +285,7 @@ export class SplashdbStorageClient {
       req.close()
     })
 
-    const payload = this.buildPayload(iteratorOption)
-    req.write(payload)
+    req.write(BSON.serialize(iteratorOption))
 
     // Here did not use for...await...of because this iterator
     // could be broken by SplashdbStorageClient.iterator()

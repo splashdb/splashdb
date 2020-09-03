@@ -1,4 +1,4 @@
-import { SplashdbStorageClientOptions } from '@splashdb/shared'
+import { SplashdbStorageClientOptions } from '@splashdb/storage-client'
 
 export interface SplashDBMongoOptions extends SplashdbStorageClientOptions {
   debug?: boolean

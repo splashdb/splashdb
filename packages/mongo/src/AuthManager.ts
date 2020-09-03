@@ -1,4 +1,4 @@
-import { BootBuffer } from 'bootbuffer'
+import BSON from 'bson'
 import { MongoCommandOption } from '@splashdb/mongo-types'
 import { SplashDBMongoOptions } from './SplashDBMongoOptions'
 import { SplashdbClientMogno } from './SplashDBMongoClient'
@@ -58,10 +58,7 @@ export class AuthManager {
         )
 
         if (!record) return false
-        const result: { [x: string]: any } = {}
-        for await (const entry of BootBuffer.read(Buffer.from(record))) {
-          result[entry.key] = entry.value
-        }
+        const result = BSON.deserialize(Buffer.from(record))
         if (result.password !== parsedAuthorization.password) return false
         const { role } = result
         this.roleCache.set(roleCacheId, role)

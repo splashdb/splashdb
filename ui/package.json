@@ -1,0 +1,20 @@
+{
+  "name": "@splashdb/ui",
+  "private": false,
+  "version": "0.6.18",
+  "description": "",
+  "main": "build/index.js",
+  "files": [
+    "build/index.js",
+    "build/index.d.ts"
+  ],
+  "scripts": {
+    "proxier": "node-ts-scripts run src/dev/proxier.ts --platform=node",
+    "start": "node-ts-scripts run src/dev/index.tsx --platform=browser",
+    "build": "node-ts-scripts bundle src/index.tsx --outputDir=build --dts --platform=browser --format=umd",
+    "test": "jest --detectOpenHandles"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}

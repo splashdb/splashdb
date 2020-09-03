@@ -199,7 +199,7 @@ export class SplashdbClientMogno {
       } else if (shouldUpdate) {
         const newdoc = {
           ...doc,
-          ...option.update,
+          ...update,
         }
         await this.basicClient.put(db, key, BSON.serialize(newdoc))
         value = optionNew ? { ...newdoc, _id: id } : oldDoc

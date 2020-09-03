@@ -75,67 +75,68 @@ export class SplashDBServer {
     headers: http2.IncomingHttpHeaders,
     flags: number
   ): Promise<void> {
-    const method = headers['x-splashdb-method']
-    const dbname = headers['x-splashdb-db']
+    try {
+      const method = headers['x-splashdb-method']
+      const dbname = headers['x-splashdb-db']
 
-    if (headers[':method'] === 'GET') {
-      stream.respond({
-        ':status': 200,
-      })
-      stream.end('Splashdb')
-      stream.close()
-      console.log(`time=${Date.now()} renderHtml=true`)
-      return
-    }
+      if (headers[':method'] === 'GET') {
+        stream.respond({
+          ':status': 200,
+        })
+        // console.log(`time=${Date.now()} renderHtml=true`)
+        return
+      }
 
-    console.log(`time=${Date.now()} method=${method} dbname=${dbname}`)
+      // console.log(`time=${Date.now()} method=${method} dbname=${dbname}`)
 
-    if (typeof method !== 'string' || typeof dbname !== 'string') {
-      stream.respond({
-        ':status': 400,
-      })
-      stream.end('Bad Request')
-      stream.close()
-      return
-    }
+      if (typeof method !== 'string' || typeof dbname !== 'string') {
+        stream.respond({
+          ':status': 400,
+        })
+        return
+      }
 
-    const db = this.dbManager.getDB(dbname)
+      const db = this.dbManager.getDB(dbname)
 
-    if (method === 'iterator') {
-      this.handleIterator(db, stream)
-    } else {
-      const params = await this.parseTotalParams(stream)
-      if (params) {
-        switch (method) {
-          case 'get':
-            const result = await db.get(params.key)
-            // console.log(`[server] get success`)
-            if (!result) {
-              stream.respond({
-                ':status': 404,
-              })
-            } else {
-              stream.write(result)
-            }
-            break
-          case 'put':
-            await db.put(params.key, params.value)
-            stream.write(Buffer.alloc(0))
-            break
-          case 'del':
-            await db.del(params.key)
-            stream.write(Buffer.alloc(0))
-            break
-          default:
-            if (this.options.debug) {
-              console.log(
-                `[server] unknown method ${method}, payload: `,
-                params
-              )
-            }
-            break
+      if (method === 'iterator') {
+        this.handleIterator(db, stream)
+      } else {
+        const params = await this.parseTotalParams(stream)
+        if (params) {
+          switch (method) {
+            case 'get':
+              const result = await db.get(params.key)
+              // console.log(`[server] get success`)
+              if (!result) {
+                stream.respond({
+                  ':status': 404,
+                })
+              } else {
+                stream.write(result)
+              }
+              break
+            case 'put':
+              await db.put(params.key, params.value)
+              stream.write(Buffer.alloc(0))
+              break
+            case 'del':
+              await db.del(params.key)
+              stream.write(Buffer.alloc(0))
+              break
+            default:
+              if (this.options.debug) {
+                console.log(
+                  `[server] unknown method ${method}, payload: `,
+                  params
+                )
+              }
+              break
+          }
         }
       }
+    } catch (e) {
+      console.log(e.message)
+    } finally {
       stream.end()
       stream.close()
     }

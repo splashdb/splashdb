@@ -254,7 +254,8 @@ export class SplashdbClientMogno {
     if (documents && documents.length > 0) {
       const results = await Promise.all(
         documents.map(async (doc) => {
-          const id = uuidv1()
+          const id = doc._id || uuidv1()
+          delete doc._id
           const key = `${document}/${id}`
           const doc2 = { _id: id, ...doc }
           await this.basicClient.put(db, key, BSON.serialize(doc))

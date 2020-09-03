@@ -1,7 +1,7 @@
 {
   "name": "@splashdb/ui",
   "private": false,
-  "version": "0.6.15",
+  "version": "0.6.17",
   "description": "",
   "main": "build/index.js",
   "files": [
@@ -18,7 +18,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@splashdb/shared": "^0.6.12",
+    "@splashdb/shared": "^0.6.17",
     "@types/bson": "^4.0.2",
     "@types/react": "^16.9.46",
     "@types/react-dom": "^16.9.8",

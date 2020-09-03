@@ -1,7 +1,7 @@
 {
   "name": "@splashdb/storage-client",
   "private": false,
-  "version": "0.6.12",
+  "version": "0.6.17",
   "description": "",
   "main": "build/index.js",
   "files": [
@@ -22,7 +22,7 @@
     "node-ts-scripts": "^0.12.14"
   },
   "dependencies": {
-    "@splashdb/shared": "^0.6.12",
+    "@splashdb/shared": "^0.6.17",
     "bson": "^4.1.0",
     "varint": "^5.0.0"
   }

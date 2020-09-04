@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { SplashdbClient } from '../src'
+import { SplashdbClient } from '../client'
 
 global.TextEncoder = require('util').TextEncoder
 global.TextDecoder = require('util').TextDecoder
@@ -10,7 +10,7 @@ jest.setTimeout(60000 * 10)
 describe('Call methods', () => {
   test('find', async (done) => {
     const uri = await fs.promises.readFile(
-      path.resolve(__dirname, '../../../mocks/mongo-node-url.txt'),
+      path.resolve(__dirname, '../mocks/mongo-node-url.txt'),
       'utf8'
     )
     const client = new SplashdbClient(uri)

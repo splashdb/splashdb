@@ -1,4 +1,4 @@
-import { SplashdbClient } from './Client'
+import { SplashdbClient } from '../client'
 import { argv } from 'yargs'
 import path from 'path'
 import fs from 'fs'

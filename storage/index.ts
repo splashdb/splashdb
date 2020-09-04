@@ -7,7 +7,7 @@ export async function main(): Promise<void> {
   const {
     DEBUG = 'false',
     SPLASHDB_SECURE = 'false',
-    SPLASHDB_PORT = '8080',
+    SPLASHDB_STORAGE_PORT = '8080',
     SPLASHDB_SECURE_KEY = '/run/secrets/splashdb-privkey.pem',
     SPLASHDB_SECURE_CERT = '/run/secrets/splashdb-cert.pem',
     SPLASHDB_DBPATH = '/data/db',
@@ -17,7 +17,7 @@ export async function main(): Promise<void> {
     debug: DEBUG === 'true',
     secure: SPLASHDB_SECURE === 'true',
     dbpath: path.resolve(process.cwd(), SPLASHDB_DBPATH),
-    port: parseInt(SPLASHDB_PORT || '8080'),
+    port: parseInt(SPLASHDB_STORAGE_PORT || '8080'),
   }
   if (options.secure) {
     options.secureKey = await fs.promises.readFile(SPLASHDB_SECURE_KEY)

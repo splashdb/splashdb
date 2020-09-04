@@ -13,12 +13,12 @@ import {
   MongoCommandDeleteOutput,
   MongoCommandUpdateOption,
   MongoCommandUpdateOutput,
-} from './MongoTypes'
+} from '../MongoTypes'
 import {
   Http2ResponseIterator,
   AuthorityProvider,
   Http2SessionDaemon,
-} from './shared'
+} from '../shared'
 
 type SplashdbClientOptions = {
   ca?: string | Buffer

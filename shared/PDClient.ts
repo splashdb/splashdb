@@ -1,5 +1,5 @@
 import * as http2 from 'http2'
-import { AuthorityProvider } from './shared'
+import { AuthorityProvider } from './'
 
 type PDClientOptions = {
   pdUrl: string

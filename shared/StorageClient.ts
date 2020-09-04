@@ -1,6 +1,6 @@
 import BSON from 'bson'
 import varint from 'varint'
-import { Http2SessionDaemon, Http2ResponseIterator } from './shared'
+import { Http2SessionDaemon, Http2ResponseIterator } from './'
 
 type SplashDBIteratorResult = {
   key: Buffer

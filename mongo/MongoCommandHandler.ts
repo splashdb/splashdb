@@ -1,5 +1,5 @@
 import { Http2SessionDaemon } from '../shared'
-import { SplashdbStorageClient } from '../StorageClient'
+import { SplashdbStorageClient } from '../shared/StorageClient'
 import { BootBuffer } from 'bootbuffer'
 import { v1 as uuidv1 } from 'uuid'
 import BSON from 'bson'
@@ -20,8 +20,8 @@ import {
   MongoCommandOption,
   MongoCommandDeleteOption,
   MongoCommandDeleteOutput,
-} from '../MongoTypes'
-import { PDClient } from '../PDClient'
+} from '../shared/MongoTypes'
+import { PDClient } from '../shared/PDClient'
 import { MongoOptions } from './MongoOptions'
 
 export function uuidV1Compare(a: string, b: string): -1 | 0 | 1 {

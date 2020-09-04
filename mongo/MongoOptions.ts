@@ -1,4 +1,4 @@
-import { SplashdbStorageClientOptions } from '../StorageClient'
+import { SplashdbStorageClientOptions } from '../shared/StorageClient'
 
 export interface MongoOptions extends SplashdbStorageClientOptions {
   debug?: boolean

@@ -1,21 +1,21 @@
 {
-	"name": "@splashdb/cli",
-	"private": false,
-	"version": "0.6.18",
-	"main": "build/index.js",
-	"files": [
-		"build/index.js",
-		"build/index.d.ts"
-	],
-	"bin": {
-		"splash": "./bin/splash",
-		"splashdb": "./bin/splash"
-	},
-	"repository": "https://github.com/splashdb/splashdb",
-	"author": "heineiuo <heineiuo@gmail.com>",
-	"license": "MIT",
-	"dependencies": {
-		"rippledb": "^0.3.1",
-		"yargs": "^15.3.1"
-	}
+  "name": "@splashdb/cli",
+  "private": false,
+  "version": "0.7.0",
+  "main": "build/index.js",
+  "files": [
+    "build/index.js",
+    "build/index.d.ts"
+  ],
+  "bin": {
+    "splash": "./bin/splash",
+    "splashdb": "./bin/splash"
+  },
+  "repository": "https://github.com/splashdb/splashdb",
+  "author": "heineiuo <heineiuo@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "rippledb": "^0.3.1",
+    "yargs": "^15.3.1"
+  }
 }

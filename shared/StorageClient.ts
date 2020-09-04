@@ -1,4 +1,3 @@
-import * as http2 from 'http2'
 import BSON from 'bson'
 import varint from 'varint'
 import { Http2SessionDaemon, Http2ResponseIterator } from './'
@@ -60,7 +59,6 @@ export class SplashdbStorageClient {
 
     try {
       for await (const data of new Http2ResponseIterator(req).iterator()) {
-        console.log('chunk', data)
         const chunk =
           typeof data.chunk === 'string' ? Buffer.from(data.chunk) : data.chunk
         cache.push(chunk)
@@ -154,7 +152,9 @@ export class SplashdbStorageClient {
       ended = true
       req.close()
 
-      console.log(`stopIterator`, e ? `ERROR: ${e.message}` : 'without error')
+      if (this.options.debug) {
+        console.log(`stopIterator`, e ? `ERROR: ${e.message}` : 'without error')
+      }
       if (e) {
         if (isBrokenError(e)) {
           this.sessionDaemon.session.close()
@@ -259,14 +259,6 @@ export class SplashdbStorageClient {
             key: Buffer.from(Object.values(result1.key)),
             value: Buffer.from(Object.values(result1.value)),
           }
-          // console.log(
-          //   'got new result',
-          //   result.value,
-          //   result.value.length >= 5
-          //     ? BSON.deserialize(result.value)
-          //     : 'but it is too small',
-          //   result1.value
-          // )
           const promise = queue.shift()
           if (promise) {
             promise.resolve({ value: result, done: false })

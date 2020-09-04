@@ -17,7 +17,7 @@ export class StorageServer {
       ...options,
     }
     this.dbManager = new StorageDBManager(this.options)
-    console.log('[server] Splashdb starting...')
+    console.log('starting...')
     this.start()
   }
 
@@ -40,25 +40,25 @@ export class StorageServer {
 
     server.on('session', (session) => {
       if (this.options.debug) {
-        console.log(`[server] new session`)
+        console.log(`session: new session`)
       }
 
       session.on('error', (e) => {
         if (this.options.debug) {
-          console.log(`[splashdb] session emit error`, e)
+          console.log(`session emit error`, e)
         }
         session.close()
       })
       session.on('goaway', (e) => {
         if (this.options.debug) {
-          console.log(`[splashdb] session emit goaway`, e)
+          console.log(`session emit goaway`, e)
         }
         session.close()
       })
     })
 
     server.listen(this.options.port)
-    console.log(`[server] listen on port ${this.options.port}`)
+    console.log(`listen on port ${this.options.port}`)
 
     for await (const { stream, headers } of new Http2ServerIterator(
       server
@@ -66,7 +66,7 @@ export class StorageServer {
       this.handleStream(stream, headers)
     }
 
-    console.error(new Error('Server broken'))
+    console.error('error', 'storage server broken')
   }
 
   async handleStream(
@@ -114,33 +114,42 @@ export class StorageServer {
               break
             }
           }
-          console.log(
-            `iterator ${dbname} ${count} result`,
-            error ? `(with error ${error.message})` : ''
-          )
-
+          if (this.options.debug) {
+            console.log(
+              `iterator ${dbname} ${count} result`,
+              error ? `(with error ${error.message})` : ''
+            )
+          }
           if (!iteratorStreamWrite) stream.write(Buffer.alloc(0))
           break
         case 'get':
           const result = await db.get(params.key)
 
           if (!result) {
-            console.log(`get ${dbname} null`)
+            if (this.options.debug) {
+              console.log(`get ${dbname} null`)
+            }
             stream.respond({
               ':status': 404,
             })
           } else {
-            console.log(`get ${dbname} ${params.key}`)
+            if (this.options.debug) {
+              console.log(`get ${dbname} ${params.key}`)
+            }
             stream.write(result)
           }
           break
         case 'put':
-          console.log(`put ${dbname}`, params.key)
+          if (this.options.debug) {
+            console.log(`put ${dbname}`, params.key)
+          }
           await db.put(params.key, params.value.buffer)
           stream.write(Buffer.alloc(0))
           break
         case 'del':
-          console.log(`del ${dbname} ${params.key}`)
+          if (this.options.debug) {
+            console.log(`del ${dbname} ${params.key}`)
+          }
           await db.del(params.key)
           stream.write(Buffer.alloc(0))
           break

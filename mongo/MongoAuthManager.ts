@@ -39,7 +39,10 @@ export class MongoAuthManager {
       if (!this.roleCache.has(roleCacheId)) {
         const parsedAuthorization = this.parseAuthorization(authorization)
         if (this.options.debug) {
-          console.log({ parsedAuthorization })
+          console.log(
+            'authed as ',
+            parsedAuthorization ? parsedAuthorization.user : 'guest'
+          )
         }
         if (!parsedAuthorization) {
           return false

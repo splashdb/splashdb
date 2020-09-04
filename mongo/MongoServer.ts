@@ -65,24 +65,19 @@ export class MongoServer {
     try {
       const body = await readBody(stream)
       const params = BSON.deserialize(Buffer.from(body))
-      console.log('params', params)
       const authorization = headers.authorization as string
       const dbname = headers['x-splashdb-db'] as string
 
       if (!(await this.authManager.can(authorization, params, dbname))) {
-        console.log('permission', false)
-
         stream.respond({
           ':status': 403,
         })
         stream.end('Forbidden')
         return
       }
-      console.log('permission', true)
 
       try {
         const result = await this.handler.runCommand(dbname, params)
-        console.log('result', result)
         stream.write(BSON.serialize(result))
       } catch (e) {
         stream.write(BSON.serialize({ ok: 0 }))
@@ -90,7 +85,6 @@ export class MongoServer {
         stream.end()
       }
     } catch (e) {
-      console.log(e.message)
       stream.respond({
         ':status': 500,
       })

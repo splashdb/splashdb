@@ -1,3 +1,4 @@
+import * as http2 from 'http2'
 import BSON from 'bson'
 import varint from 'varint'
 import { Http2SessionDaemon, Http2ResponseIterator } from './'
@@ -139,27 +140,44 @@ export class SplashdbStorageClient {
 
     let ended = false
 
-    const stopIterator = (e: Error) => {
-      if (isBrokenError(e)) {
-        this.sessionDaemon.session.close()
-      }
+    const req = this.sessionDaemon.session.request({
+      // GET / DELETE methods cannot use req.write
+      ':method': 'POST',
+      'x-splashdb-version': '1.0',
+      'x-splashdb-db': db,
+      'x-splashdb-method': 'iterator',
+    })
 
-      if (this.options.debug) {
-        console.log(
-          `[splash client] read response failed, stop iterator`,
-          e.message
-        )
-      }
+    const stopIterator = (e?: Error): void => {
+      if (ended) return
       // stop request with error
       ended = true
-      req.end()
+      req.close()
+
+      console.log(`stopIterator`, e ? `ERROR: ${e.message}` : 'without error')
+      if (e) {
+        if (isBrokenError(e)) {
+          this.sessionDaemon.session.close()
+        }
+
+        if (this.options.debug) {
+          console.log(
+            `[splash client] read response failed, stop iterator`,
+            e.message
+          )
+        }
+      }
+
       const promise = queue.shift()
       if (promise) {
-        promise.reject(e)
+        if (e) {
+          promise.reject(e)
+        } else {
+          promise.resolve({ value: undefined, done: true })
+        }
       } else {
-        cache.push(e)
+        if (e) cache.push(e)
       }
-      return
     }
 
     /**
@@ -236,9 +254,19 @@ export class SplashdbStorageClient {
         cachedBufferReadSize += nextDataSize
 
         try {
-          const result: SplashDBIteratorResult = BSON.deserialize(
-            nextDataBuffer
-          )
+          const result1 = BSON.deserialize(nextDataBuffer)
+          const result: SplashDBIteratorResult = {
+            key: Buffer.from(Object.values(result1.key)),
+            value: Buffer.from(Object.values(result1.value)),
+          }
+          // console.log(
+          //   'got new result',
+          //   result.value,
+          //   result.value.length >= 5
+          //     ? BSON.deserialize(result.value)
+          //     : 'but it is too small',
+          //   result1.value
+          // )
           const promise = queue.shift()
           if (promise) {
             promise.resolve({ value: result, done: false })
@@ -252,15 +280,7 @@ export class SplashdbStorageClient {
       }
     }
 
-    const req = this.sessionDaemon.session.request({
-      // GET / DELETE methods cannot use req.write
-      ':method': 'POST',
-      'x-splashdb-version': '1.0',
-      'x-splashdb-db': db,
-      'x-splashdb-method': 'iterator',
-    })
-
-    req.once('response', (headers, flags) => {
+    req.once('response', (headers) => {
       const status = headers[':status']
       if (status !== 200) {
         const error = new Error(`HTTP_ERROR_${headers[':status']}`)
@@ -269,7 +289,10 @@ export class SplashdbStorageClient {
     })
 
     req.on('data', async (chunk) => {
-      if (ended) return
+      if (ended) {
+        console.warn('WARNING: receive data after end.')
+        return
+      }
       readCached(Buffer.from(chunk))
     })
 
@@ -278,15 +301,12 @@ export class SplashdbStorageClient {
     })
 
     req.once('end', () => {
-      ended = true
-      const promise = queue.shift()
-      if (promise) {
-        promise.resolve({ done: true, value: undefined })
-      }
-      req.close()
+      'req once end'
+      stopIterator()
     })
 
     req.write(BSON.serialize(iteratorOption))
+    req.end()
 
     // Here did not use for...await...of because this iterator
     // could be broken by SplashdbStorageClient.iterator()
@@ -298,17 +318,12 @@ export class SplashdbStorageClient {
       [Symbol.asyncIterator]() {
         return {
           return: async (): Promise<IteratorResult<SplashDBIteratorResult>> => {
-            try {
-              const value = cache.shift()
-              return Promise.resolve({ done: true, value })
-            } catch (e) {
-              return Promise.resolve({ done: true, value: e })
-            } finally {
-              if (!ended) {
-                ended = true
-                req.end()
-              }
+            queueMicrotask(stopIterator)
+            const value = cache.shift()
+            if (value instanceof Error) {
+              return Promise.reject(value)
             }
+            return Promise.resolve({ done: true, value })
           },
           next: (): Promise<IteratorResult<SplashDBIteratorResult>> => {
             const result = cache.shift()

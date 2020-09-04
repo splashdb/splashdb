@@ -76,18 +76,20 @@ export class MongoCommandHandler {
     if (error) {
       if (this.options.debug)
         console.log(
-          `[client-mongo] Deserialize with BSON failed, fallback to BootBuffer`
+          `document(${entry.key}) parsed with BSON failed because ${error.message}, fallback to BootBuffer`
         )
       try {
         for (const bbEntry of BootBuffer.readSync(entry.value)) {
           doc[bbEntry.key] = bbEntry.value
         }
+        console.log('fallback to bootbuffer success', doc)
         error = null
       } catch (e) {
         error = e
         if (this.options.debug) {
           console.warn(
-            `[client-mongo] document(key=${entry.key}) parsed with error, maybe broken or not encoded with bootbuffer`
+            `[client-mongo] document(${entry.key}) parsed faield because ${e.message}, maybe broken or not encoded with bootbuffer`,
+            entry.value
           )
         }
       }

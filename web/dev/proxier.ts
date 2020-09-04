@@ -1,6 +1,6 @@
 import http from 'http'
 import http2 from 'http2'
-import { Http2SessionDaemon } from '@splashdb/shared'
+import { Http2SessionDaemon } from '../../shared'
 
 function getHeaders(req: http.IncomingMessage): http2.OutgoingHttpHeaders {
   const newHeaders: http2.OutgoingHttpHeaders = {}

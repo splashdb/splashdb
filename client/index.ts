@@ -13,7 +13,7 @@ import {
   MongoCommandDeleteOutput,
   MongoCommandUpdateOption,
   MongoCommandUpdateOutput,
-} from '../MongoTypes'
+} from '../shared/MongoTypes'
 import {
   Http2ResponseIterator,
   AuthorityProvider,

@@ -7,11 +7,6 @@
 		"build/index.js",
 		"build/index.d.ts"
 	],
-	"scripts": {
-		"publish-ci": "npm publish",
-		"build": "node-ts-scripts bundle src/index.ts --outputDir=build --dts --platform=node",
-		"test": "jest --detectOpenHandles"
-	},
 	"bin": {
 		"splash": "./bin/splash",
 		"splashdb": "./bin/splash"
@@ -20,13 +15,7 @@
 	"author": "heineiuo <heineiuo@gmail.com>",
 	"license": "MIT",
 	"dependencies": {
-		"@splashdb/client": "0.0.3",
-		"@splashdb/shared": "^0.6.18",
 		"rippledb": "^0.3.1",
 		"yargs": "^15.3.1"
-	},
-	"devDependencies": {
-		"@types/node": "^14.0.27",
-		"node-ts-scripts": "^0.12.14"
 	}
 }

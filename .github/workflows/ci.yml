@@ -35,7 +35,10 @@ jobs:
 
       - name: Build
         run: |
-          npm run build
+          npm run web:build
+          npm run client:build
+          npm run storage:build
+          npm run mongo:build
         env:
           CI: true
 
@@ -65,13 +68,19 @@ jobs:
           github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
           npm config set access public
-          npm run npm-publish
+          npm run client:build
+          npm run client:publish
+          npm run web:build
+          npm run web:publish
 
       - name: Publish Docker
         if: |
           github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
-          lerna run docker-publish
+          npm run storage:build
+          npm run storage:build-docker
+          npm run mongo:build
+          npm run mongo:build-docker
         env:
           CI: true
 

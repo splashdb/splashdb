@@ -60,10 +60,10 @@ export class StorageServer {
     server.listen(this.options.port)
     console.log(`[server] listen on port ${this.options.port}`)
 
-    for await (const { stream, headers, flags } of new Http2ServerIterator(
+    for await (const { stream, headers } of new Http2ServerIterator(
       server
     ).iterator()) {
-      this.handleStream(stream, headers, flags)
+      this.handleStream(stream, headers)
     }
 
     console.error(new Error('Server broken'))
@@ -71,64 +71,76 @@ export class StorageServer {
 
   async handleStream(
     stream: http2.ServerHttp2Stream,
-    headers: http2.IncomingHttpHeaders,
-    flags: number
+    headers: http2.IncomingHttpHeaders
   ): Promise<void> {
     try {
-      const dbmethod = headers['x-splashdb-method']
-      const dbname = headers['x-splashdb-db']
-      console.log(`time=${Date.now()} dbmethod=${dbmethod} dbname=${dbname}`)
+      const dbmethod = headers['x-splashdb-method'] as string
+      const dbname = headers['x-splashdb-db'] as string
 
       if (headers[':method'] === 'GET') {
-        console.log('GET is not allowed')
-        stream.respond({ ':status': 200 })
+        stream.respond({ ':status': 404 })
         return
       }
 
-      if (typeof dbmethod !== 'string' || typeof dbname !== 'string') {
-        console.log('dbmethod and dbname is required')
+      if (
+        !['iterator', 'get', 'put', 'del'].includes(dbmethod) ||
+        typeof dbname !== 'string'
+      ) {
         stream.respond({ ':status': 400 })
         return
       }
 
       const body = await readBody(stream)
+      if (body.length < 5) {
+        stream.respond({ ':status': 400 })
+        return
+      }
+      const params = BSON.deserialize(Buffer.from(body))
       const db = this.dbManager.getDB(dbname)
-      const params = body.length >= 5 ? BSON.deserialize(Buffer.from(body)) : {}
-      console.log('params', params)
       switch (dbmethod) {
         case 'iterator':
           let iteratorStreamWrite = false
-          console.log('iterator start')
+          let error = null
+          let count = 0
           for await (const result of db.iterator(params)) {
-            console.log(result)
+            count++
             try {
               const resultBuf = BSON.serialize(result)
               stream.write(Buffer.from(varint.encode(resultBuf.length)))
               stream.write(resultBuf)
               iteratorStreamWrite = true
             } catch (e) {
+              error = e
               break
             }
           }
+          console.log(
+            `iterator ${dbname} ${count} result`,
+            error ? `(with error ${error.message})` : ''
+          )
 
           if (!iteratorStreamWrite) stream.write(Buffer.alloc(0))
           break
         case 'get':
           const result = await db.get(params.key)
-          // console.log(`[server] get success`)
+
           if (!result) {
+            console.log(`get ${dbname} null`)
             stream.respond({
               ':status': 404,
             })
           } else {
+            console.log(`get ${dbname} ${params.key}`)
             stream.write(result)
           }
           break
         case 'put':
-          await db.put(params.key, params.value)
+          console.log(`put ${dbname}`, params.key)
+          await db.put(params.key, params.value.buffer)
           stream.write(Buffer.alloc(0))
           break
         case 'del':
+          console.log(`del ${dbname} ${params.key}`)
           await db.del(params.key)
           stream.write(Buffer.alloc(0))
           break

@@ -5,7 +5,7 @@ node_modules
 docker/**/*.js
 fixtures/**/*.js
 tests/**/*.js
-build
+**/build
 !docker/**/entrypoint.js
 isolate-*-v8.log
 .env*
